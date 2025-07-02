@@ -1,0 +1,636 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Gopher war</title>
+  <style>
+  body {
+    cursor: none;
+    overflow: hidden;
+    background: url('/static/images/background.png') no-repeat;
+    background-size: cover;
+  }
+  .body-gameover {
+    cursor: default;
+    background-image: var(--gameover-bg, url('/static/images/gameover.png'));
+    background-size: contain;
+  }
+  .target {
+    background-image: url('/static/gopher/target.png');
+    width: 100px;
+    height: 100px;
+    background-size: cover;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+  }
+  .target-name {
+    position: absolute;
+    bottom: -20px;
+    text-align: center;
+    color: blueviolet;
+  }
+  .bomb {
+    background-image: url('/static/gopher/bomb.png');
+    width: 30px;
+    height: 30px;
+    background-size: cover;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+  }
+  .missile {
+    background-image: url('/static/gopher/missile.png');
+    width: 50px;
+    height: 50px;
+    background-size: cover;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+  }
+  .msg {
+    font-size: 20px;
+    color: red;
+  }
+  .explosion {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    position: absolute;
+    background: radial-gradient(circle, #ffff44, transparent);
+    animation: explode 0.5s ease-out forwards;
+    pointer-events: none;
+    z-index: 1000;
+  }
+  @keyframes explode {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+  @keyframes background-animation {
+    from {background-position: 0 0;}
+    to {background-position: 100% 0;}
+  }
+  .death-particle {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    position: absolute;
+    background: #4499ff;
+    box-shadow: 0 0 8px #4499ff, 0 0 16px #aaccff;
+    pointer-events: none;
+    z-index: 2000;
+    animation: death-particle-float 2s ease-out forwards;
+  }
+  @keyframes death-particle-float {
+    0% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+  }
+  </style>
+  </head>
+  <body>
+    <script>
+      var url = "ws://" + window.location.host + "/ws";
+      var wsOpened = false;
+      var myid = -1;
+      var mylife = -1;
+      var mysize = -1;
+      var myname = "";
+      var mycharacter = "gopher";
+      var mycharge = "none"
+      var prevX = 0;
+      var prevY = 0;
+      var bulletDirection = 0;
+      var missileload = true;
+      var timerid = undefined;
+      var chargingTimerid = undefined;
+      var chargedTimerid = undefined;
+      var configMap = {
+        "gopher": {
+          maxLife: 15,
+          maxSize: 120,
+          maxSpeed: 30,
+          speed: 1.2,
+          bombLife: 60,
+          bombSize: 30,
+          bombSpeed: 24,
+          bombFire: 57,
+          bombDmg: 3,
+          missileLife: 80,
+          missileSize: 50,
+          missileSpeed: 36,
+          missileFire: 75,
+          missileDmg: 14,
+          dmgSize: 4,
+          missileCharging: 150,
+          missileCharged: 350,
+          dmgMessage: "Ouch...",
+          missileMessage: "Help me!!",
+          explosionDuration: 500
+        },
+        "sushidog": {
+          maxLife: 20,
+          maxSize: 100,
+          maxSpeed: 15,
+          speed: 1.0,
+          bombLife: 30,
+          bombSize: 30,
+          bombSpeed: 20,
+          bombFire: 27,
+          bombDmg: 4,
+          missileLife: 60,
+          missileSize: 50,
+          missileSpeed: 16,
+          missileFire: 57,
+          missileDmg: -10,
+          dmgSize: 3,
+          missileCharging: 200,
+          missileCharged: 500,
+          dmgMessage: "あわわ...",
+          missileMessage: "ヒェッ!!",
+          explosionDuration: 500
+        },
+        "duke": {
+          maxLife: 25,
+          maxSize: 180,
+          maxSpeed: 10,
+          speed: 0.7,
+          bombLife: 20,
+          bombSize: 50,
+          bombSpeed: 25,
+          bombFire: 17,
+          bombDmg: 5,
+          missileLife: 30,
+          missileSize: 70,
+          missileSpeed: 35,
+          missileFire: 27,
+          missileDmg: 20,
+          dmgSize: 2,
+          missileCharging: 300,
+          missileCharged: 700,
+          dmgMessage: "ジャワ",
+          missileMessage: "ジャワワッ！！",
+          explosionDuration: 500
+        }
+      };
+      var config;
+      var explosions = [];
+      var initialized = false;
+
+      function initWebsocket(){
+        ws = new WebSocket(url);
+        ws.onopen = function (event) {
+          wsOpened = true;
+          console.log("ws connected")
+        }
+        ws.onmessage = function (msg) {
+          var cmds = {"appear": appear, "show": show, "bullet": bullet, "hit":hit, "miss": miss, "dead": dead};
+          if (msg.data) {
+            var parts = msg.data.split(" ")
+            var cmd = cmds[parts[0]];
+            if (cmd) {
+              cmd.apply(null, parts.slice(1));
+            }
+          }
+        };
+      }
+      //init (send config to server)
+      function init() {
+        console.log("ws is opened = "+ wsOpened)
+        if (wsOpened === false) {
+          console.log("Socket connection is not established yet.");
+          setTimeout(()=>{
+            console.log("ws is opened(waited) = "+ wsOpened)
+            ws.send("init " + myname + " " + mycharacter + " " +JSON.stringify(config));
+            console.log("Starting refresh event...")
+            timerid = setInterval(refreshEvent, 25);
+            initialized = true;
+          }, 1000);
+        } else {
+          ws.send("init " + myname + " " + mycharacter + " " +JSON.stringify(config));
+          console.log("Starting refresh event...")
+          timerid = setInterval(refreshEvent, 25);
+          initialized = true;
+        }
+      }
+      //start
+      function appear(id) {
+        myid = id;
+        mylife = config.maxLife;
+        mysize = config.maxSize;
+        mycharge = "none";
+        missileload = true;
+      }
+      //"show %s %d %d %d %s %s %s", ID, X, Y, LIFE, NAME, CHARGE, CHARACTER
+      function show(id, x, y, life, name, charge, character) {
+        if (life <= 0) {
+          return;
+        }
+        var node = document.getElementById("target-" + id);
+        var targetConfig = configMap[character] || configMap["gopher"];
+        var newsize = targetConfig.maxSize - targetConfig.dmgSize*(targetConfig.maxLife-parseInt(life));
+        if (!node) {
+          node = document.createElement("div");
+          document.body.appendChild(node);
+          node.className = "target";
+          node.style.zIndex = id + 1;
+          node.id = "target-" + id;
+          text = document.createElement("div")
+          node.appendChild(text)
+          text.className = "target-name";
+          text.textContent = name;
+          text.style.left = "30px";
+          
+          // Update character-specific images for this target
+          if (character && character !== mycharacter) {
+            node.style.backgroundImage = `url('/static/${character}/target.png')`;
+          }
+        }
+        node.style.left = (parseInt(x) - newsize/2) + "px";
+        node.style.top = (parseInt(y) - newsize/2) + "px";
+        node.style.width = newsize + "px";
+        node.style.height = newsize + "px";
+        if (charge === "charging") {
+          node.style.border = "5px dotted yellow";
+        } else if (charge === "charged"){
+          node.style.border = "5px double red";
+        } else {
+          node.style.border = "none";
+        }
+      }
+      //"bullet %s %d %d %d %t %s", ID, X, Y, DIRECTION, SPECIAL, CHARACTER
+      function bullet(id, x, y, direction, special, character) {
+        var prefix = (special === "true") ? "missile-" : "bomb-";
+        var className = (special === "true") ? "missile" : "bomb";
+        var bulletSize = (special === "true") ? configMap[character].missileSize : configMap[character].bombSize;
+        var node = document.getElementById(prefix + id);
+        
+        // Create bullet element if it doesn't exist
+        if (!node) {
+          node = document.createElement("div");
+          document.body.appendChild(node);
+          node.className = className;
+          node.style.zIndex = id + 1;
+          node.id = prefix + id;
+          node.style.width = bulletSize + "px";
+          node.style.height = bulletSize + "px";
+          node.style.position = "absolute";
+          
+          // Set character-specific bullet image
+          var bulletType = (special === "true") ? "missile" : "bomb";
+          var characterToUse = character || "gopher";
+          node.style.backgroundImage = `url('/static/${characterToUse}/${bulletType}.png')`;
+          node.style.backgroundSize = "cover";
+        }
+        
+        // Always update position (this handles both creation and movement)
+        node.style.left = (parseInt(x) - bulletSize/2) + "px";
+        node.style.top = (parseInt(y) - bulletSize/2) + "px";
+        
+        // Set rotation based on direction
+        var rotatedeg = "rotate(90deg)";
+        if (direction === "1") {
+          rotatedeg = "rotate(0deg)";
+        } else if(direction === "2") {
+          rotatedeg = "rotate(270deg)";
+        } else if(direction === "3") {
+          rotatedeg = "rotate(180deg)";
+        }
+        node.style.transform = rotatedeg;
+      }
+      //"hit %s %s %d %t %s", target.ID, bullet.ID, target.LIFE, bullet.SPECIAL, target.CHARACTER
+      function hit(id, bulletid, life, special, character) {
+        var node = document.getElementById("target-" + id);
+        var bulletElement = null;
+        var prefix = (special === "true") ? "missile-" : "bomb-";
+        bulletElement = document.getElementById(prefix + bulletid);
+        
+        // Create explosion effect at bullet position
+        if (bulletElement) {
+          var bulletRect = bulletElement.getBoundingClientRect();
+          var containerRect = document.body.getBoundingClientRect();
+          createExplosion(
+            bulletRect.left - containerRect.left + bulletElement.offsetWidth / 2,
+            bulletRect.top - containerRect.top + bulletElement.offsetHeight / 2
+          );
+          document.body.removeChild(bulletElement);
+        }
+        
+        if (node) {
+          var targetConfig = configMap[character] || configMap["gopher"];
+          var newsize = targetConfig.maxSize - targetConfig.dmgSize*(targetConfig.maxLife-life)
+          node.style.width = newsize + "px";
+          node.style.height = newsize + "px";
+          if (id === myid) {
+            mylife = life;
+            mysize = newsize;
+          }
+          var msg = document.createElement("div");
+          document.body.appendChild(msg);
+          msg.className = "msg " + "msg-" + id;
+          msg.style.zIndex= -1;
+          msg.style.position = "absolute";
+          var message = (special === "true") ? targetConfig.missileMessage : targetConfig.dmgMessage;
+          msg.textContent = message;
+          msg.style.left = (parseInt(node.style.left,10) + newsize) + "px";
+          msg.style.top = (parseInt(node.style.top,10) + newsize/2) + "px";
+        }
+        
+        if (bulletid === myid && special === "true") {
+          missileload = true;
+        }
+      }
+      //"miss %s %t", bullet.ID, bullet.SPECIAL
+      function miss(bulletid, special) {
+        var prefix = (special === "true") ? "missile-" : "bomb-";
+        var bullet = document.getElementById(prefix + bulletid);
+        
+        if (bullet) {
+          document.body.removeChild(bullet);
+        }
+        if (bulletid === myid && special === "true") {
+          missileload = true;
+        }
+      }
+      //"dead %s %s %t", target.ID, bullet.ID, bullet.SPECIAL
+      function dead(id, bulletid, special) {
+        if (bulletid === myid && special === "true") {
+          missileload = true;
+        }
+        
+        var node = document.getElementById("target-" + id);
+        var bulletElement = null;
+        var prefix = (special === "true") ? "missile-" : "bomb-";
+        bulletElement = document.getElementById(prefix + bulletid);
+        
+        // Create death effect at target position BEFORE removing the node
+        if (node) {
+          var nodeRect = node.getBoundingClientRect();
+          var containerRect = document.body.getBoundingClientRect();
+          var centerX = nodeRect.left - containerRect.left + node.offsetWidth / 2;
+          var centerY = nodeRect.top - containerRect.top + node.offsetHeight / 2;
+          
+          // Create Rockman-style death effect
+          createDeathEffect(centerX, centerY);
+          
+          // Create regular explosion effect
+          createExplosion(centerX, centerY);
+          
+          document.body.removeChild(node);
+        }
+        
+        if (bulletElement) {
+          document.body.removeChild(bulletElement);
+        }
+        
+        var msgs = document.querySelectorAll(".msg-" + id)
+        for(var i=0; i<msgs.length; i++) {
+          document.body.removeChild(msgs[i])
+        }
+        if (id === myid) {
+          mylife = 0;
+          document.body.className = "body-gameover";
+          document.body.style.animation = "background-animation 4s linear infinite alternate"
+          if (timerid) {
+            console.log("Stop refresh event...")
+            setTimeout(function() {clearInterval(timerid)}, 10000)
+          }
+        }
+      }
+      
+      function updateCharacterImages() {
+        var targetStyle = document.querySelector('.target');
+        if (!targetStyle) {
+          var style = document.createElement('style');
+          style.textContent = `
+            .target { background-image: url('/static/${mycharacter}/target.png'); }
+          `;
+          document.head.appendChild(style);
+        } else {
+          // Update existing styles
+          var styleSheets = document.styleSheets;
+          for (var i = 0; i < styleSheets.length; i++) {
+            try {
+              var rules = styleSheets[i].cssRules || styleSheets[i].rules;
+              for (var j = 0; j < rules.length; j++) {
+                if (rules[j].selectorText === '.target') {
+                  rules[j].style.backgroundImage = `url('/static/${mycharacter}/target.png')`;
+                }
+              }
+            } catch(e) {}
+          }
+        }
+        
+        // Update body background for game over screen
+        var gameOverBg = `url('/static/${mycharacter}/gameover.png')`;
+        if (mycharacter === 'gopher') {
+          gameOverBg = "url('/static/images/gameover.png')";
+        }
+        document.documentElement.style.setProperty('--gameover-bg', gameOverBg);
+      }
+      
+      //Initialize game from URL parameters
+      window.addEventListener("load", function (e) {
+        if (location.search != null && location.search != "") {
+          var params = new URLSearchParams(location.search);
+          if (params.has('name')) {
+            myname = decodeURIComponent(params.get('name'));
+          }
+          if (params.has('character')) {
+            mycharacter = params.get('character');
+          }
+        }
+        if (myname === "") {
+          myname = "guest";
+        }
+        // Set config based on selected character
+        config = configMap[mycharacter] || configMap["gopher"];
+        updateCharacterImages();
+        initWebsocket();
+        // Auto-start the game without character selection
+        setTimeout(init, 500);
+      });
+      //move target event
+      window.addEventListener("mousemove", function (e) {
+        if (myid > -1 && mylife > 0) {
+          show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
+          if (prevX !== 0 || prevY !== 0) {
+            var dx = e.pageX - prevX;
+            var dy = e.pageY - prevY;
+            if( dx != 0 || dy != 0 ){
+              if (Math.abs(dx)>=Math.abs(dy)) {
+                bulletDirection = (dx>=0) ? 1 : 3;
+              } else {
+                bulletDirection = (dy>=0) ? 0 : 2;
+              }
+            }
+          }
+          prevX = e.pageX;
+          prevY = e.pageY;
+          ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+        }
+      });
+      //charge event
+      window.addEventListener("mousedown", function (e) {
+        if (missileload === true) {
+          if (mycharge === "none") {
+            chargingTimerid = setTimeout(()=>{
+              mycharge = "charging";
+              show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
+              ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+              chargedTimerid = setTimeout(()=>{
+                mycharge = "charged"
+                show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
+                ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+              }, config.missileCharged);
+            }, config.missileCharging);
+          }
+        }
+      });
+      //fire bomb or missile event
+      window.addEventListener("mouseup", function(e) {
+        if(chargingTimerid) {
+          clearTimeout(chargingTimerid);
+          chargingTimerid = undefined;
+        }
+        if(chargedTimerid) {
+          clearTimeout(chargedTimerid);
+          chargedTimerid = undefined;
+        }
+        if (myid > -1 && mylife > 0 && initialized) {
+          if(mycharge === "charged") {
+            mycharge = "none";
+            show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
+            ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+            if (missileload === true){
+              missileload = false;
+              ws.send(["fire-missile", e.pageX, e.pageY, bulletDirection].join(" "));
+            }
+          } else {
+            mycharge = "none";
+            show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
+            ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+            ws.send(["fire-bomb", e.pageX, e.pageY, bulletDirection].join(" "));
+          }
+        }
+      })
+      //gameover continue event
+      window.addEventListener("keydown", function(e) {
+        if (mylife <= 0) {
+          setTimeout(function(){
+            location.replace("/?name=" + encodeURIComponent(myname) + "&character=" + mycharacter);
+          },500);
+        }
+      });
+      function refreshEvent() {
+        ws.send(["refresh"].join(" "))
+        updateExplosions();
+      }
+      
+      // Create explosion effect
+      function createExplosion(x, y) {
+        var explosion = document.createElement("div");
+        explosion.className = "explosion";
+        explosion.style.position = "absolute";
+        explosion.style.left = (x - 30) + "px";
+        explosion.style.top = (y - 30) + "px";
+        explosion.style.zIndex = "1000";
+        
+        document.body.appendChild(explosion);
+        
+        // Store explosion data for cleanup
+        explosions.push({
+          element: explosion,
+          startTime: Date.now()
+        });
+        
+        // Remove explosion after animation
+        setTimeout(function() {
+          if (explosion.parentNode) {
+            explosion.parentNode.removeChild(explosion);
+          }
+        }, config.explosionDuration);
+      }
+      
+      // Update and cleanup explosions
+      function updateExplosions() {
+        var currentTime = Date.now();
+        explosions = explosions.filter(function(explosion) {
+          if (currentTime - explosion.startTime > config.explosionDuration) {
+            if (explosion.element.parentNode) {
+              explosion.element.parentNode.removeChild(explosion.element);
+            }
+            return false;
+          }
+          return true;
+        });
+      }
+      
+      // Create Rockman-style death effect with blue particles
+      function createDeathEffect(x, y) {
+        var particleCount = 12;
+        var particleSpeed = 3;
+        var duration = 2000;
+        
+        for (var i = 0; i < particleCount; i++) {
+          var particle = document.createElement("div");
+          particle.className = "death-particle";
+          
+          // Calculate particle direction in a circular pattern
+          var angle = (i / particleCount) * Math.PI * 2;
+          var speed = particleSpeed + Math.random() * 2;
+          
+          // Set initial position
+          particle.style.left = (x - 4) + "px";
+          particle.style.top = (y - 4) + "px";
+          
+          // Calculate movement direction (mainly upward like Mega Man)
+          var vx = Math.cos(angle) * speed * 0.5;
+          var vy = Math.sin(angle) * speed - Math.random() * 2 - 2;
+          
+          document.body.appendChild(particle);
+          
+          // Animate particle movement
+          animateParticle(particle, vx, vy, duration);
+        }
+      }
+      
+      // Animate individual particle with physics
+      function animateParticle(particle, vx, vy, duration) {
+        var startTime = Date.now();
+        var startX = parseFloat(particle.style.left);
+        var startY = parseFloat(particle.style.top);
+        
+        function updateParticle() {
+          var elapsed = Date.now() - startTime;
+          var progress = elapsed / duration;
+          
+          if (progress >= 1) {
+            if (particle.parentNode) {
+              particle.parentNode.removeChild(particle);
+            }
+            return;
+          }
+          
+          // Apply gravity effect (particles slow down upward movement)
+          vy += 0.1;
+          
+          // Update position
+          var currentX = startX + vx * elapsed * 0.05;
+          var currentY = startY + vy * elapsed * 0.05;
+          
+          particle.style.left = currentX + "px";
+          particle.style.top = currentY + "px";
+          
+          requestAnimationFrame(updateParticle);
+        }
+        
+        updateParticle();
+      }
+    </script>
+  </body>
+</html>

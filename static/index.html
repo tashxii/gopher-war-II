@@ -1,0 +1,158 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Gopher war - Character Select</title>
+    <style>
+      body {
+        background: url('/static/images/background.png') no-repeat;
+        background-size: cover;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+      }
+      .character-select {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        border: 3px solid #fff;
+        border-radius: 10px;
+        padding: 20px;
+        z-index: 10000;
+        text-align: center;
+        color: white;
+      }
+      .character-option {
+        display: inline-block;
+        margin: 10px;
+        padding: 15px;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+      }
+      .character-option:hover {
+        border-color: #ffff00;
+        background: rgba(255, 255, 0, 0.2);
+        transform: scale(1.05);
+      }
+      .character-option.selected {
+        border-color: #00ff00;
+        background: rgba(0, 255, 0, 0.2);
+      }
+      .character-preview {
+        width: 80px;
+        height: 80px;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        margin: 0 auto 10px;
+      }
+      .character-name {
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .start-button {
+        margin-top: 20px;
+        padding: 10px 30px;
+        font-size: 18px;
+        background: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .start-button:hover {
+        background: #45a049;
+      }
+      .name-input {
+        margin: 15px 0;
+        padding: 8px;
+        font-size: 16px;
+        border: 2px solid #ccc;
+        border-radius: 4px;
+        width: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="character-select">
+      <h2>Select Your Character</h2>
+      <input type="text" class="name-input" placeholder="Enter your name" id="nameInput" value="guest">
+      <div style="margin: 20px 0;">
+        <div class="character-option selected" data-character="gopher">
+          <div class="character-preview" style="background-image: url('/static/gopher/target.png')"></div>
+          <div class="character-name">Gopher</div>
+        </div>
+        <div class="character-option" data-character="sushidog">
+          <div class="character-preview" style="background-image: url('/static/sushidog/target.png')"></div>
+          <div class="character-name">Sushidog</div>
+        </div>
+        <div class="character-option" data-character="duke">
+          <div class="character-preview" style="background-image: url('/static/duke/target.png')"></div>
+          <div class="character-name">Duke</div>
+        </div>
+      </div>
+      <button class="start-button" onclick="startGame()">Start Game</button>
+    </div>
+
+    <script>
+      var selectedCharacter = "gopher";
+
+      // Initialize from URL parameters if available
+      window.addEventListener("load", function() {
+        if (location.search != null && location.search != "") {
+          var params = new URLSearchParams(location.search);
+          
+          // Set name if provided
+          if (params.has('name')) {
+            var nameInput = document.getElementById('nameInput');
+            nameInput.value = decodeURIComponent(params.get('name'));
+          }
+          
+          // Set character if provided
+          if (params.has('character')) {
+            var character = params.get('character');
+            selectedCharacter = character;
+            
+            // Update UI to reflect selected character
+            var options = document.querySelectorAll('.character-option');
+            options.forEach(function(option) {
+              option.classList.remove('selected');
+              if (option.getAttribute('data-character') === character) {
+                option.classList.add('selected');
+              }
+            });
+          }
+        }
+      });
+
+      // Add click handlers for character selection
+      var options = document.querySelectorAll('.character-option');
+      options.forEach(function(option) {
+        option.addEventListener('click', function() {
+          options.forEach(function(opt) { opt.classList.remove('selected'); });
+          option.classList.add('selected');
+          selectedCharacter = option.getAttribute('data-character');
+        });
+      });
+
+      function startGame() {
+        var nameInput = document.getElementById('nameInput');
+        var playerName = nameInput.value.trim().replace(/ /g, "_");
+        if (playerName === "") {
+          playerName = "guest";
+        }
+        
+        // Redirect to game.html with parameters
+        window.location.href = "/game?name=" + encodeURIComponent(playerName) + "&character=" + selectedCharacter;
+      }
+
+      // Focus on name input
+      document.getElementById('nameInput').focus();
+    </script>
+  </body>
+</html>

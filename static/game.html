@@ -70,12 +70,12 @@
     to {background-position: 100% 0;}
   }
   .death-particle {
-    width: 8px;
-    height: 8px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     position: absolute;
     background: #4499ff;
-    box-shadow: 0 0 8px #4499ff, 0 0 16px #aaccff;
+    box-shadow: 0 0 12px #4499ff, 0 0 24px #aaccff;
     pointer-events: none;
     z-index: 2000;
     animation: death-particle-float 2s ease-out forwards;
@@ -113,21 +113,21 @@
         "gopher": {
           maxLife: 15,
           maxSize: 120,
-          maxSpeed: 30,
+          maxSpeed: 100,
           speed: 1.2,
-          bombLife: 60,
+          bombLife: 40,
           bombSize: 30,
           bombSpeed: 24,
-          bombFire: 57,
+          bombFire: 35,
           bombDmg: 3,
-          missileLife: 80,
+          missileLife: 50,
           missileSize: 50,
           missileSpeed: 36,
-          missileFire: 75,
+          missileFire: 45,
           missileDmg: 14,
           dmgSize: 4,
           missileCharging: 150,
-          missileCharged: 350,
+          missileCharged: 300,
           dmgMessage: "Ouch...",
           missileMessage: "Help me!!",
           explosionDuration: 500
@@ -135,21 +135,21 @@
         "sushidog": {
           maxLife: 20,
           maxSize: 100,
-          maxSpeed: 15,
+          maxSpeed: 80,
           speed: 1.0,
-          bombLife: 30,
+          bombLife: 25,
           bombSize: 30,
           bombSpeed: 20,
-          bombFire: 27,
+          bombFire: 20,
           bombDmg: 4,
-          missileLife: 60,
+          missileLife: 50,
           missileSize: 50,
-          missileSpeed: 16,
-          missileFire: 57,
+          missileSpeed: 12,
+          missileFire: 42,
           missileDmg: -10,
           dmgSize: 3,
-          missileCharging: 200,
-          missileCharged: 500,
+          missileCharging: 300,
+          missileCharged: 600,
           dmgMessage: "あわわ...",
           missileMessage: "ヒェッ!!",
           explosionDuration: 500
@@ -157,21 +157,21 @@
         "duke": {
           maxLife: 25,
           maxSize: 180,
-          maxSpeed: 10,
-          speed: 0.7,
-          bombLife: 20,
+          maxSpeed: 60,
+          speed: 0.8,
+          bombLife: 22,
           bombSize: 50,
           bombSpeed: 25,
           bombFire: 17,
           bombDmg: 5,
-          missileLife: 30,
+          missileLife: 17,
           missileSize: 70,
           missileSpeed: 35,
-          missileFire: 27,
+          missileFire: 12,
           missileDmg: 20,
-          dmgSize: 2,
-          missileCharging: 300,
-          missileCharged: 700,
+          dmgSize: 5,
+          missileCharging: 400,
+          missileCharged: 800,
           dmgMessage: "ジャワ",
           missileMessage: "ジャワワッ！！",
           explosionDuration: 500
@@ -374,11 +374,13 @@
           var centerX = nodeRect.left - containerRect.left + node.offsetWidth / 2;
           var centerY = nodeRect.top - containerRect.top + node.offsetHeight / 2;
           
-          // Create Rockman-style death effect
-          createDeathEffect(centerX, centerY);
+          // Create large fireworks-style death effect (first)
+          createDeathEffect(centerX, centerY, true);
           
-          // Create regular explosion effect
-          createExplosion(centerX, centerY);
+          // Create smaller fireworks-style death effect (delayed)
+          setTimeout(function() {
+            createDeathEffect(centerX, centerY, false);
+          }, 500); // 500ms後に2回目の小さな青い粒子
           
           document.body.removeChild(node);
         }
@@ -457,7 +459,7 @@
       //move target event
       window.addEventListener("mousemove", function (e) {
         if (myid > -1 && mylife > 0) {
-          show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
+          // Don't show own player immediately - wait for server response
           if (prevX !== 0 || prevY !== 0) {
             var dx = e.pageX - prevX;
             var dy = e.pageY - prevY;
@@ -471,7 +473,9 @@
           }
           prevX = e.pageX;
           prevY = e.pageY;
-          ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+          if (initialized) {
+            ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+          }
         }
       });
       //charge event
@@ -480,11 +484,9 @@
           if (mycharge === "none") {
             chargingTimerid = setTimeout(()=>{
               mycharge = "charging";
-              show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
               ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
               chargedTimerid = setTimeout(()=>{
                 mycharge = "charged"
-                show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
                 ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
               }, config.missileCharged);
             }, config.missileCharging);
@@ -570,40 +572,54 @@
         });
       }
       
-      // Create Rockman-style death effect with blue particles
-      function createDeathEffect(x, y) {
-        var particleCount = 12;
-        var particleSpeed = 3;
-        var duration = 2000;
+      // Create Rockman-style death effect with blue particles (fireworks-like)
+      function createDeathEffect(x, y, isLarge) {
+        // Default to large effect if not specified
+        if (isLarge === undefined) isLarge = true;
+        
+        var particleCount = isLarge ? 20 : 15;
+        var particleSpeed = isLarge ? 15 : 10;
+        var particleSize = isLarge ? 20 : 12;
+        var maxRadius = isLarge ? 300 : 200;
+        var duration = isLarge ? 2500 : 2000;
         
         for (var i = 0; i < particleCount; i++) {
           var particle = document.createElement("div");
           particle.className = "death-particle";
           
-          // Calculate particle direction in a circular pattern
-          var angle = (i / particleCount) * Math.PI * 2;
-          var speed = particleSpeed + Math.random() * 2;
+          // Set particle size
+          particle.style.width = particleSize + "px";
+          particle.style.height = particleSize + "px";
+          
+          // Calculate particle direction in a circular pattern with more randomness
+          var angle = (i / particleCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
+          var speed = particleSpeed + Math.random() * (particleSpeed * 0.8);
           
           // Set initial position
-          particle.style.left = (x - 4) + "px";
-          particle.style.top = (y - 4) + "px";
+          particle.style.left = (x - particleSize/2) + "px";
+          particle.style.top = (y - particleSize/2) + "px";
           
-          // Calculate movement direction (mainly upward like Mega Man)
-          var vx = Math.cos(angle) * speed * 0.5;
-          var vy = Math.sin(angle) * speed - Math.random() * 2 - 2;
+          // Calculate movement direction (fireworks-like explosion in all directions)
+          var vx = Math.cos(angle) * speed;
+          var vy = Math.sin(angle) * speed;
+          
+          // Add some upward bias for more natural firework effect
+          vy -= Math.random() * 1.5;
           
           document.body.appendChild(particle);
           
           // Animate particle movement
-          animateParticle(particle, vx, vy, duration);
+          animateParticle(particle, vx, vy, duration, maxRadius);
         }
       }
       
       // Animate individual particle with physics
-      function animateParticle(particle, vx, vy, duration) {
+      function animateParticle(particle, vx, vy, duration, maxRadius) {
         var startTime = Date.now();
         var startX = parseFloat(particle.style.left);
         var startY = parseFloat(particle.style.top);
+        var centerX = startX;
+        var centerY = startY;
         
         function updateParticle() {
           var elapsed = Date.now() - startTime;
@@ -616,12 +632,28 @@
             return;
           }
           
-          // Apply gravity effect (particles slow down upward movement)
-          vy += 0.1;
+          // Apply gravity effect (particles slow down upward movement and accelerate downward)
+          vy += 0.15;
           
-          // Update position
-          var currentX = startX + vx * elapsed * 0.05;
-          var currentY = startY + vy * elapsed * 0.05;
+          // Apply air resistance to slow down particles over time
+          vx *= 0.99;
+          vy *= 0.99;
+          
+          // Update position with better physics
+          var deltaTime = elapsed * 0.016; // Convert to frame-based movement
+          var currentX = startX + vx * deltaTime;
+          var currentY = startY + vy * deltaTime;
+          
+          // Limit particle spread to maxRadius
+          var distance = Math.sqrt(Math.pow(currentX - centerX, 2) + Math.pow(currentY - centerY, 2));
+          if (distance > maxRadius) {
+            var ratio = maxRadius / distance;
+            currentX = centerX + (currentX - centerX) * ratio;
+            currentY = centerY + (currentY - centerY) * ratio;
+            // Reduce velocity when hitting boundary
+            vx *= 0.3;
+            vy *= 0.3;
+          }
           
           particle.style.left = currentX + "px";
           particle.style.top = currentY + "px";

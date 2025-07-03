@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -56,6 +57,9 @@ type Config struct {
 }
 
 func main() {
+	// Initialize random seed
+	rand.Seed(time.Now().UnixNano())
+	
 	router := gin.Default()
 	mrouter := melody.New()
 	targets := make(map[*melody.Session]*TargetInfo)
@@ -64,8 +68,6 @@ func main() {
 	configs := make(map[*melody.Session]*Config)
 	lock := new(sync.Mutex)
 	counter := 0
-	config := Config{}
-	initConfig := false
 	previousMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
 	router.GET("/", func(c *gin.Context) {
 		http.ServeFile(c.Writer, c.Request, "static/index.html")
@@ -86,7 +88,10 @@ func main() {
 			s.Write([]byte(message))
 		}
 		//appear(id)
-		targets[s] = &TargetInfo{ID: strconv.Itoa(counter), NAME: "", CHARGE: "none", CHARACTER: "", PrevX: 0, PrevY: 0, HasMoved: false}
+		// Generate random spawn position (avoid screen edges)
+		spawnX := rand.Intn(600) + 100 // Random X between 100-700
+		spawnY := rand.Intn(400) + 100 // Random Y between 100-500
+		targets[s] = &TargetInfo{ID: strconv.Itoa(counter), NAME: "", CHARGE: "none", CHARACTER: "", X: spawnX, Y: spawnY, PrevX: spawnX, PrevY: spawnY, HasMoved: false}
 		bombs[s] = &BulletInfo{ID: targets[s].ID, SPECIAL: false}
 		missiles[s] = &BulletInfo{ID: targets[s].ID, SPECIAL: true}
 		message := fmt.Sprintf("appear %s", targets[s].ID)
@@ -97,7 +102,9 @@ func main() {
 
 	mrouter.HandleDisconnect(func(s *melody.Session) {
 		lock.Lock()
-		mrouter.BroadcastOthers([]byte(fmt.Sprintf("dead %s", targets[s].ID)), s)
+		if _, exists := targets[s]; exists {
+			mrouter.BroadcastOthers([]byte(fmt.Sprintf("dead %s", targets[s].ID)), s)
+		}
 		delete(targets, s)
 		delete(bombs, s)
 		delete(missiles, s)
@@ -118,16 +125,11 @@ func main() {
 			if err != nil {
 				message := fmt.Sprintf("Failed to configure by json [%s]", string(msg))
 				fmt.Println(message)
-				panic(message)
+				lock.Unlock()
+				return
 			}
 			// Store player-specific config
 			configs[s] = playerConfig
-
-			// Set global config if not set (for backward compatibility)
-			if initConfig == false {
-				config = *playerConfig
-				initConfig = true
-			}
 
 			target := targets[s]
 			target.NAME = params[1]
@@ -151,14 +153,21 @@ func main() {
 		}
 		//["show", e.pageX, e.pageY, charge]
 		if params[0] == "show" && len(params) == 4 {
-			moveTarget(targets[s], params, &config, mrouter, s)
+			// Check if target and config exist
+			if targets[s] != nil && configs[s] != nil {
+				moveTarget(targets[s], params, configs[s], mrouter)
+			}
 		}
 		//["fire-xxx", e.pageX, e.pageY, direction]
 		if params[0] == "fire-bomb" && len(params) == 4 {
-			fireBullet(bombs[s], params, &config, mrouter, s, targets)
+			if bombs[s] != nil && targets[s] != nil {
+				fireBullet(bombs[s], params, mrouter, s, targets)
+			}
 		}
 		if params[0] == "fire-missile" && len(params) == 4 {
-			fireBullet(missiles[s], params, &config, mrouter, s, targets)
+			if missiles[s] != nil && targets[s] != nil {
+				fireBullet(missiles[s], params, mrouter, s, targets)
+			}
 		}
 		if params[0] == "refresh" {
 			currentMillisecond := time.Now().UnixNano() / int64(time.Millisecond)
@@ -166,19 +175,39 @@ func main() {
 			if currentMillisecond-previousMillisecond >= 20 {
 				previousMillisecond = currentMillisecond
 				for _, missile := range missiles {
-					moveBullet(missile, &config, mrouter, targets)
+					moveBullet(missile, mrouter, targets)
 				}
 				for _, bomb := range bombs {
-					moveBullet(bomb, &config, mrouter, targets)
+					moveBullet(bomb, mrouter, targets)
 				}
+				deadTargets := make([]*melody.Session, 0)
 				for targetSession, target := range targets {
 					targetConfig := configs[targetSession]
+					targetDied := false
 					for _, missile := range missiles {
-						judgeHitBullet(target, missile, targetConfig, mrouter)
+						if judgeHitBullet(target, missile, targetConfig, mrouter) {
+							targetDied = true
+							break
+						}
 					}
-					for _, bomb := range bombs {
-						judgeHitBullet(target, bomb, targetConfig, mrouter)
+					if !targetDied {
+						for _, bomb := range bombs {
+							if judgeHitBullet(target, bomb, targetConfig, mrouter) {
+								targetDied = true
+								break
+							}
+						}
 					}
+					if targetDied {
+						deadTargets = append(deadTargets, targetSession)
+					}
+				}
+				// Remove dead targets from maps
+				for _, deadSession := range deadTargets {
+					delete(targets, deadSession)
+					delete(bombs, deadSession)
+					delete(missiles, deadSession)
+					delete(configs, deadSession)
 				}
 			}
 		}
@@ -193,7 +222,7 @@ func main() {
 	router.Run(ip + ":5000")
 }
 
-func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *melody.Melody, s *melody.Session) {
+func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *melody.Melody) {
 	newX, _ := strconv.Atoi(params[1])
 	newY, _ := strconv.Atoi(params[2])
 
@@ -233,21 +262,22 @@ func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *me
 		target.NAME,
 		target.CHARGE,
 		target.CHARACTER)
-	mrouter.BroadcastOthers([]byte(message), s)
+	mrouter.Broadcast([]byte(message))
 }
 
-func fireBullet(bullet *BulletInfo, params []string, config *Config, mrouter *melody.Melody, s *melody.Session, targets map[*melody.Session]*TargetInfo) {
+func fireBullet(bullet *BulletInfo, params []string, mrouter *melody.Melody, s *melody.Session, targets map[*melody.Session]*TargetInfo) {
 	bullet.FIRE = true
 	bullet.LIFE = bullet.MAXLIFE
-	bullet.X, _ = strconv.Atoi(params[1])
-	bullet.Y, _ = strconv.Atoi(params[2])
-	bullet.DIRECTION, _ = strconv.Atoi(params[3])
+	// Use player's actual position instead of mouse position
 	target := targets[s]
+	bullet.X = target.X
+	bullet.Y = target.Y
+	bullet.DIRECTION, _ = strconv.Atoi(params[3])
 	message := fmt.Sprintf("bullet %s %d %d %d %t %s", bullet.ID, bullet.X, bullet.Y, bullet.DIRECTION, bullet.SPECIAL, target.CHARACTER)
 	mrouter.Broadcast([]byte(message))
 }
 
-func moveBullet(bullet *BulletInfo, config *Config, mrouter *melody.Melody, targets map[*melody.Session]*TargetInfo) {
+func moveBullet(bullet *BulletInfo, mrouter *melody.Melody, targets map[*melody.Session]*TargetInfo) {
 	if bullet.FIRE == false {
 		return
 	}
@@ -283,18 +313,18 @@ func moveBullet(bullet *BulletInfo, config *Config, mrouter *melody.Melody, targ
 	mrouter.Broadcast([]byte(message))
 }
 
-func judgeHitBullet(target *TargetInfo, bullet *BulletInfo, config *Config, mrouter *melody.Melody) {
+func judgeHitBullet(target *TargetInfo, bullet *BulletInfo, targetConfig *Config, mrouter *melody.Melody) bool {
 	if bullet.FIRE == false || target.LIFE <= 0 || bullet.LIFE >= bullet.FIRERANGE {
-		return
+		return false
 	}
 
 	// Skip collision detection if target hasn't moved from initial position
 	if !target.HasMoved {
-		return
+		return false
 	}
 
 	// Calculate current target size based on character config and current life
-	currentTargetSize := config.TargetSize - config.DmgSize*(config.MaxLife-target.LIFE)
+	currentTargetSize := targetConfig.TargetSize - targetConfig.DmgSize*(targetConfig.MaxLife-target.LIFE)
 
 	// Circular collision detection with margin
 	dx := float64(target.X - bullet.X)
@@ -310,19 +340,21 @@ func judgeHitBullet(target *TargetInfo, bullet *BulletInfo, config *Config, mrou
 		target.LIFE = target.LIFE - bullet.DAMAGE
 		bullet.LIFE = 0
 		bullet.FIRE = false
-		if target.LIFE > config.MaxLife {
-			target.LIFE = config.MaxLife // Cap the life to the max life
+		if target.LIFE > targetConfig.MaxLife {
+			target.LIFE = targetConfig.MaxLife // Cap the life to the max life
 		}
 
 		// Update target size after damage
-		target.SIZE = config.TargetSize - config.DmgSize*(config.MaxLife-target.LIFE)
+		target.SIZE = targetConfig.TargetSize - targetConfig.DmgSize*(targetConfig.MaxLife-target.LIFE)
 
 		if target.LIFE <= 0 {
 			message := fmt.Sprintf("dead %s %s %t", target.ID, bullet.ID, bullet.SPECIAL)
 			mrouter.Broadcast([]byte(message))
+			return true // Target died, should be removed
 		} else {
 			message := fmt.Sprintf("hit %s %s %d %t %s", target.ID, bullet.ID, target.LIFE, bullet.SPECIAL, target.CHARACTER)
 			mrouter.Broadcast([]byte(message))
 		}
 	}
+	return false
 }

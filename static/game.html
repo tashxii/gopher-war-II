@@ -92,7 +92,7 @@
   </head>
   <body>
     <script>
-      var url = "ws://" + window.location.host + "/ws";
+      var url = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + "/ws";
       var wsOpened = false;
       var myid = -1;
       var mylife = -1;

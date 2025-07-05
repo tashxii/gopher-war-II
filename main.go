@@ -219,12 +219,19 @@ func main() {
 		lock.Unlock()
 	})
 
-	// Environment variable "IP" can be used to set the server IP address
+	// Environment variables for server configuration
 	ip := os.Getenv("IP")
 	if ip == "" {
 		fmt.Println("Environment variable [IP] is not set, using default")
 	}
-	router.Run(ip + ":5000")
+	
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "5000"
+		fmt.Println("Environment variable [PORT] is not set, using default port 5000")
+	}
+	
+	router.Run(ip + ":" + port)
 }
 
 func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *melody.Melody) {

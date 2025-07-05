@@ -16,8 +16,6 @@
   }
   .target {
     background-image: url('/static/gopher/target.png');
-    width: 100px;
-    height: 100px;
     background-size: cover;
     position: absolute;
     left: 0px;
@@ -124,13 +122,14 @@
           missileSize: 50,
           missileSpeed: 36,
           missileFire: 45,
-          missileDmg: 14,
+          missileDmg: 6,
           dmgSize: 4,
           missileCharging: 150,
           missileCharged: 300,
           dmgMessage: "Ouch...",
           missileMessage: "Help me!!",
-          explosionDuration: 500
+          explosionDuration: 500,
+          paralyzeDuration: 50
         },
         "sushidog": {
           maxLife: 20,
@@ -152,7 +151,8 @@
           missileCharged: 600,
           dmgMessage: "あわわ...",
           missileMessage: "ヒェッ!!",
-          explosionDuration: 500
+          explosionDuration: 500,
+          paralyzeDuration: 0
         },
         "duke": {
           maxLife: 25,
@@ -174,7 +174,8 @@
           missileCharged: 800,
           dmgMessage: "ジャワ",
           missileMessage: "ジャワワッ！！",
-          explosionDuration: 500
+          explosionDuration: 500,
+          paralyzeDuration: 0
         }
       };
       var config;
@@ -225,8 +226,8 @@
         mycharge = "none";
         missileload = true;
       }
-      //"show %s %d %d %d %s %s %s", ID, X, Y, LIFE, NAME, CHARGE, CHARACTER
-      function show(id, x, y, life, name, charge, character) {
+      //"show %s %d %d %d %s %s %s %d", ID, X, Y, LIFE, NAME, CHARGE, CHARACTER, PARALYZED
+      function show(id, x, y, life, name, charge, character, paralyzed) {
         if (life <= 0) {
           return;
         }
@@ -254,12 +255,19 @@
         node.style.top = (parseInt(y) - newsize/2) + "px";
         node.style.width = newsize + "px";
         node.style.height = newsize + "px";
-        if (charge === "charging") {
+        // Apply paralyzed visual effects
+        if (paralyzed && paralyzed > 0) {
+          node.style.border = "3px solid purple";
+          node.style.filter = "grayscale(0.7) opacity(0.7)";
+        } else if (charge === "charging") {
           node.style.border = "5px dotted yellow";
+          node.style.filter = "none";
         } else if (charge === "charged"){
           node.style.border = "5px double red";
+          node.style.filter = "none";
         } else {
           node.style.border = "none";
+          node.style.filter = "none";
         }
       }
       //"bullet %s %d %d %d %t %s", ID, X, Y, DIRECTION, SPECIAL, CHARACTER
@@ -302,8 +310,8 @@
         }
         node.style.transform = rotatedeg;
       }
-      //"hit %s %s %d %t %s", target.ID, bullet.ID, target.LIFE, bullet.SPECIAL, target.CHARACTER
-      function hit(id, bulletid, life, special, character) {
+      //"hit %s %s %d %t %s %d", target.ID, bullet.ID, target.LIFE, bullet.SPECIAL, target.CHARACTER, target.Paralyzed
+      function hit(id, bulletid, life, special, character, paralyzed) {
         var node = document.getElementById("target-" + id);
         var bulletElement = null;
         var prefix = (special === "true") ? "missile-" : "bomb-";
@@ -325,6 +333,16 @@
           var newsize = targetConfig.maxSize - targetConfig.dmgSize*(targetConfig.maxLife-life)
           node.style.width = newsize + "px";
           node.style.height = newsize + "px";
+          
+          // Apply paralyzed visual effects immediately when hit
+          if (paralyzed && paralyzed > 0) {
+            node.style.border = "3px solid purple";
+            node.style.filter = "grayscale(0.7) opacity(0.7)";
+          } else {
+            node.style.border = "none";
+            node.style.filter = "none";
+          }
+          
           if (id === myid) {
             mylife = life;
             mysize = newsize;
@@ -579,8 +597,8 @@
         
         var particleCount = isLarge ? 20 : 15;
         var particleSpeed = isLarge ? 15 : 10;
-        var particleSize = isLarge ? 20 : 12;
-        var maxRadius = isLarge ? 300 : 200;
+        var particleSize = isLarge ? 30 : 24;
+        var maxRadius = isLarge ? 400 : 250;
         var duration = isLarge ? 2500 : 2000;
         
         for (var i = 0; i < particleCount; i++) {

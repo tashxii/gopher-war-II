@@ -22,6 +22,7 @@ type TargetInfo struct {
 	X, Y, LIFE, SIZE            int
 	PrevX, PrevY                int
 	HasMoved                    bool
+	Paralyzed                   int // Frames remaining for paralysis
 }
 
 // BulletInfo model
@@ -30,6 +31,7 @@ type BulletInfo struct {
 	X, Y, LIFE, MAXLIFE, DIRECTION int
 	DAMAGE, SPEED, FIRERANGE, SIZE int
 	FIRE, SPECIAL                  bool
+	ParalyzeAmount                 int // Amount of paralysis to apply when hitting
 }
 
 // Config model
@@ -54,6 +56,7 @@ type Config struct {
 	DmgMessage        string  `json:"dmgMessage"`
 	MissileMessage    string  `json:"missileMessage"`
 	ExplosionDuration int     `json:"explosionDuration"`
+	ParalyzeDuration  int     `json:"paralyzeDuration"`
 }
 
 func main() {
@@ -84,14 +87,14 @@ func main() {
 	mrouter.HandleConnect(func(s *melody.Session) {
 		lock.Lock()
 		for _, target := range targets {
-			message := fmt.Sprintf("show %s %d %d %d %s %s %s", target.ID, target.X, target.Y, target.LIFE, target.NAME, target.CHARGE, target.CHARACTER)
+			message := fmt.Sprintf("show %s %d %d %d %s %s %s %d", target.ID, target.X, target.Y, target.LIFE, target.NAME, target.CHARGE, target.CHARACTER, target.Paralyzed)
 			s.Write([]byte(message))
 		}
 		//appear(id)
 		// Generate random spawn position (avoid screen edges)
 		spawnX := rand.Intn(600) + 100 // Random X between 100-700
 		spawnY := rand.Intn(400) + 100 // Random Y between 100-500
-		targets[s] = &TargetInfo{ID: strconv.Itoa(counter), NAME: "", CHARGE: "none", CHARACTER: "", X: spawnX, Y: spawnY, PrevX: spawnX, PrevY: spawnY, HasMoved: false}
+		targets[s] = &TargetInfo{ID: strconv.Itoa(counter), NAME: "", CHARGE: "none", CHARACTER: "", X: spawnX, Y: spawnY, PrevX: spawnX, PrevY: spawnY, HasMoved: false, Paralyzed: 0}
 		bombs[s] = &BulletInfo{ID: targets[s].ID, SPECIAL: false}
 		missiles[s] = &BulletInfo{ID: targets[s].ID, SPECIAL: true}
 		message := fmt.Sprintf("appear %s", targets[s].ID)
@@ -143,6 +146,7 @@ func main() {
 			bomb.SPEED = playerConfig.BombSpeed
 			bomb.SIZE = playerConfig.BombSize
 			bomb.DAMAGE = playerConfig.BombDmg
+			bomb.ParalyzeAmount = 0 // Bombs don't paralyze
 			missile := missiles[s]
 			missile.MAXLIFE = playerConfig.MissileLife
 			missile.LIFE = playerConfig.MissileLife
@@ -150,6 +154,7 @@ func main() {
 			missile.SPEED = playerConfig.MissileSpeed
 			missile.SIZE = playerConfig.MissileSize
 			missile.DAMAGE = playerConfig.MissileDmg
+			missile.ParalyzeAmount = playerConfig.ParalyzeDuration
 		}
 		//["show", e.pageX, e.pageY, charge]
 		if params[0] == "show" && len(params) == 4 {
@@ -223,6 +228,27 @@ func main() {
 }
 
 func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *melody.Melody) {
+	// Decrease paralysis counter
+	if target.Paralyzed > 0 {
+		target.Paralyzed--
+	}
+	
+	// If still paralyzed, don't allow movement but update charge
+	if target.Paralyzed > 0 {
+		target.CHARGE = params[3]
+		message := fmt.Sprintf("show %s %d %d %d %s %s %s %d",
+			target.ID,
+			target.X,
+			target.Y,
+			target.LIFE,
+			target.NAME,
+			target.CHARGE,
+			target.CHARACTER,
+			target.Paralyzed)
+		mrouter.Broadcast([]byte(message))
+		return
+	}
+
 	newX, _ := strconv.Atoi(params[1])
 	newY, _ := strconv.Atoi(params[2])
 
@@ -254,14 +280,15 @@ func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *me
 		target.HasMoved = true
 	}
 
-	message := fmt.Sprintf("show %s %d %d %d %s %s %s",
+	message := fmt.Sprintf("show %s %d %d %d %s %s %s %d",
 		target.ID,
 		target.X,
 		target.Y,
 		target.LIFE,
 		target.NAME,
 		target.CHARGE,
-		target.CHARACTER)
+		target.CHARACTER,
+		target.Paralyzed)
 	mrouter.Broadcast([]byte(message))
 }
 
@@ -347,12 +374,17 @@ func judgeHitBullet(target *TargetInfo, bullet *BulletInfo, targetConfig *Config
 		// Update target size after damage
 		target.SIZE = targetConfig.TargetSize - targetConfig.DmgSize*(targetConfig.MaxLife-target.LIFE)
 
+		// Apply paralysis based on bullet's paralyze amount
+		if bullet.ParalyzeAmount > 0 {
+			target.Paralyzed = bullet.ParalyzeAmount
+		}
+
 		if target.LIFE <= 0 {
 			message := fmt.Sprintf("dead %s %s %t", target.ID, bullet.ID, bullet.SPECIAL)
 			mrouter.Broadcast([]byte(message))
 			return true // Target died, should be removed
 		} else {
-			message := fmt.Sprintf("hit %s %s %d %t %s", target.ID, bullet.ID, target.LIFE, bullet.SPECIAL, target.CHARACTER)
+			message := fmt.Sprintf("hit %s %s %d %t %s %d", target.ID, bullet.ID, target.LIFE, bullet.SPECIAL, target.CHARACTER, target.Paralyzed)
 			mrouter.Broadcast([]byte(message))
 		}
 	}

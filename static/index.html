@@ -53,23 +53,49 @@
       .character-name {
         font-size: 16px;
         font-weight: bold;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
+      }
+      .character-stats {
+        font-size: 12px;
+        text-align: left;
+        margin-top: 5px;
+      }
+      .stat-row {
+        margin: 2px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .stat-label {
+        font-weight: bold;
+        margin-right: 5px;
+        min-width: 30px;
+      }
+      .stat-stars {
+        color: #ffd700;
+        font-size: 14px;
       }
       .start-button {
-        margin-top: 20px;
-        padding: 10px 30px;
-        font-size: 18px;
+        padding: 8px 20px;
+        font-size: 16px;
         background: #4CAF50;
         color: white;
         border: none;
-        border-radius: 5px;
+        border-radius: 4px;
         cursor: pointer;
+        height: 36px;
       }
       .start-button:hover {
         background: #45a049;
       }
-      .name-input {
+      .name-input-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
         margin: 15px 0;
+      }
+      .name-input {
         padding: 8px;
         font-size: 16px;
         border: 2px solid #ccc;
@@ -81,22 +107,66 @@
   <body>
     <div class="character-select">
       <h2>Select Your Character</h2>
-      <input type="text" class="name-input" placeholder="Enter your name" id="nameInput" value="guest">
+      <div class="name-input-container">
+        <input type="text" class="name-input" placeholder="Enter your name" id="nameInput" value="guest">
+        <button class="start-button" onclick="startGame()">Go</button>
+      </div>
       <div style="margin: 20px 0;">
         <div class="character-option selected" data-character="gopher">
           <div class="character-preview" style="background-image: url('/static/gopher/target.png')"></div>
           <div class="character-name">Gopher</div>
+          <div class="character-stats">
+            <div class="stat-row">
+              <span class="stat-label">HP:</span>
+              <span class="stat-stars">★★☆☆☆</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">POW:</span>
+              <span class="stat-stars">★★☆☆☆</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">SPD:</span>
+              <span class="stat-stars">★★★★★</span>
+            </div>
+          </div>
         </div>
         <div class="character-option" data-character="sushidog">
           <div class="character-preview" style="background-image: url('/static/sushidog/target.png')"></div>
           <div class="character-name">Sushidog</div>
+          <div class="character-stats">
+            <div class="stat-row">
+              <span class="stat-label">HP:</span>
+              <span class="stat-stars">★★★☆☆</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">POW:</span>
+              <span class="stat-stars">★★★☆☆</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">SPD:</span>
+              <span class="stat-stars">★★★★☆</span>
+            </div>
+          </div>
         </div>
         <div class="character-option" data-character="duke">
           <div class="character-preview" style="background-image: url('/static/duke/target.png')"></div>
           <div class="character-name">Duke</div>
+          <div class="character-stats">
+            <div class="stat-row">
+              <span class="stat-label">HP:</span>
+              <span class="stat-stars">★★★★★</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">POW:</span>
+              <span class="stat-stars">★★★★★</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">SPD:</span>
+              <span class="stat-stars">★★☆☆☆</span>
+            </div>
+          </div>
         </div>
       </div>
-      <button class="start-button" onclick="startGame()">Start Game</button>
     </div>
 
     <script>
@@ -153,6 +223,13 @@
 
       // Focus on name input
       document.getElementById('nameInput').focus();
+      
+      // Add Enter key handler to start game
+      document.getElementById('nameInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          startGame();
+        }
+      });
     </script>
   </body>
 </html>

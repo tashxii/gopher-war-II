@@ -524,7 +524,7 @@
         if (myid > -1 && mylife > 0 && initialized) {
           if(mycharge === "charged") {
             mycharge = "none";
-            show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
+            show(myid, e.pageX, e.pageY, mylife, myname, mycharge, mycharacter);
             ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
             if (missileload === true){
               missileload = false;
@@ -532,7 +532,7 @@
             }
           } else {
             mycharge = "none";
-            show(myid, e.pageX, e.pageY, mylife, myname, mycharge);
+            show(myid, e.pageX, e.pageY, mylife, myname, mycharge, mycharacter);
             ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
             ws.send(["fire-bomb", e.pageX, e.pageY, bulletDirection].join(" "));
           }

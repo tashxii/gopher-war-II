@@ -110,43 +110,43 @@
       var configMap = {
         "gopher": {
           maxLife: 15,
-          maxSize: 120,
+          maxSize: 100,
           maxSpeed: 100,
           speed: 1.2,
           bombLife: 40,
           bombSize: 30,
-          bombSpeed: 24,
+          bombSpeed: 30,
           bombFire: 35,
           bombDmg: 3,
           missileLife: 50,
           missileSize: 50,
-          missileSpeed: 36,
+          missileSpeed: 40,
           missileFire: 45,
           missileDmg: 6,
-          dmgSize: 4,
-          missileCharging: 150,
-          missileCharged: 300,
+          dmgSize: 3,
+          missileCharging: 100,
+          missileCharged: 200,
           dmgMessage: "Ouch...",
           missileMessage: "Help me!!",
           explosionDuration: 500,
-          paralyzeDuration: 50
+          paralyzeDuration: 334
         },
         "sushidog": {
           maxLife: 20,
-          maxSize: 100,
+          maxSize: 80,
           maxSpeed: 80,
           speed: 1.0,
           bombLife: 25,
           bombSize: 30,
-          bombSpeed: 20,
+          bombSpeed: 25,
           bombFire: 20,
           bombDmg: 4,
           missileLife: 50,
           missileSize: 50,
-          missileSpeed: 12,
+          missileSpeed: 20,
           missileFire: 42,
           missileDmg: -10,
-          dmgSize: 3,
+          dmgSize: 2,
           missileCharging: 300,
           missileCharged: 600,
           dmgMessage: "あわわ...",
@@ -156,7 +156,7 @@
         },
         "duke": {
           maxLife: 25,
-          maxSize: 180,
+          maxSize: 150,
           maxSpeed: 60,
           speed: 0.8,
           bombLife: 22,
@@ -169,9 +169,9 @@
           missileSpeed: 35,
           missileFire: 12,
           missileDmg: 20,
-          dmgSize: 5,
-          missileCharging: 400,
-          missileCharged: 800,
+          dmgSize: 4,
+          missileCharging: 800,
+          missileCharged: 1600,
           dmgMessage: "ジャワ",
           missileMessage: "ジャワワッ！！",
           explosionDuration: 500,
@@ -245,7 +245,7 @@
           text.className = "target-name";
           text.textContent = name;
           text.style.left = "30px";
-          
+
           // Update character-specific images for this target
           if (character && character !== mycharacter) {
             node.style.backgroundImage = `url('/static/${character}/target.png')`;
@@ -276,7 +276,7 @@
         var className = (special === "true") ? "missile" : "bomb";
         var bulletSize = (special === "true") ? configMap[character].missileSize : configMap[character].bombSize;
         var node = document.getElementById(prefix + id);
-        
+
         // Create bullet element if it doesn't exist
         if (!node) {
           node = document.createElement("div");
@@ -287,18 +287,18 @@
           node.style.width = bulletSize + "px";
           node.style.height = bulletSize + "px";
           node.style.position = "absolute";
-          
+
           // Set character-specific bullet image
           var bulletType = (special === "true") ? "missile" : "bomb";
           var characterToUse = character || "gopher";
           node.style.backgroundImage = `url('/static/${characterToUse}/${bulletType}.png')`;
           node.style.backgroundSize = "cover";
         }
-        
+
         // Always update position (this handles both creation and movement)
         node.style.left = (parseInt(x) - bulletSize/2) + "px";
         node.style.top = (parseInt(y) - bulletSize/2) + "px";
-        
+
         // Set rotation based on direction
         var rotatedeg = "rotate(90deg)";
         if (direction === "1") {
@@ -316,7 +316,7 @@
         var bulletElement = null;
         var prefix = (special === "true") ? "missile-" : "bomb-";
         bulletElement = document.getElementById(prefix + bulletid);
-        
+
         // Create explosion effect at bullet position
         if (bulletElement) {
           var bulletRect = bulletElement.getBoundingClientRect();
@@ -327,13 +327,13 @@
           );
           document.body.removeChild(bulletElement);
         }
-        
+
         if (node) {
           var targetConfig = configMap[character] || configMap["gopher"];
           var newsize = targetConfig.maxSize - targetConfig.dmgSize*(targetConfig.maxLife-life)
           node.style.width = newsize + "px";
           node.style.height = newsize + "px";
-          
+
           // Apply paralyzed visual effects immediately when hit
           if (paralyzed && paralyzed > 0) {
             node.style.border = "3px solid purple";
@@ -342,7 +342,7 @@
             node.style.border = "none";
             node.style.filter = "none";
           }
-          
+
           if (id === myid) {
             mylife = life;
             mysize = newsize;
@@ -357,7 +357,7 @@
           msg.style.left = (parseInt(node.style.left,10) + newsize) + "px";
           msg.style.top = (parseInt(node.style.top,10) + newsize/2) + "px";
         }
-        
+
         if (bulletid === myid && special === "true") {
           missileload = true;
         }
@@ -366,7 +366,7 @@
       function miss(bulletid, special) {
         var prefix = (special === "true") ? "missile-" : "bomb-";
         var bullet = document.getElementById(prefix + bulletid);
-        
+
         if (bullet) {
           document.body.removeChild(bullet);
         }
@@ -379,34 +379,34 @@
         if (bulletid === myid && special === "true") {
           missileload = true;
         }
-        
+
         var node = document.getElementById("target-" + id);
         var bulletElement = null;
         var prefix = (special === "true") ? "missile-" : "bomb-";
         bulletElement = document.getElementById(prefix + bulletid);
-        
+
         // Create death effect at target position BEFORE removing the node
         if (node) {
           var nodeRect = node.getBoundingClientRect();
           var containerRect = document.body.getBoundingClientRect();
           var centerX = nodeRect.left - containerRect.left + node.offsetWidth / 2;
           var centerY = nodeRect.top - containerRect.top + node.offsetHeight / 2;
-          
+
           // Create large fireworks-style death effect (first)
           createDeathEffect(centerX, centerY, true);
-          
+
           // Create smaller fireworks-style death effect (delayed)
           setTimeout(function() {
             createDeathEffect(centerX, centerY, false);
           }, 500); // 500ms後に2回目の小さな青い粒子
-          
+
           document.body.removeChild(node);
         }
-        
+
         if (bulletElement) {
           document.body.removeChild(bulletElement);
         }
-        
+
         var msgs = document.querySelectorAll(".msg-" + id)
         for(var i=0; i<msgs.length; i++) {
           document.body.removeChild(msgs[i])
@@ -421,7 +421,7 @@
           }
         }
       }
-      
+
       function updateCharacterImages() {
         var targetStyle = document.querySelector('.target');
         if (!targetStyle) {
@@ -444,7 +444,7 @@
             } catch(e) {}
           }
         }
-        
+
         // Update body background for game over screen
         var gameOverBg = `url('/static/${mycharacter}/gameover.png')`;
         if (mycharacter === 'gopher') {
@@ -452,7 +452,7 @@
         }
         document.documentElement.style.setProperty('--gameover-bg', gameOverBg);
       }
-      
+
       //Initialize game from URL parameters
       window.addEventListener("load", function (e) {
         if (location.search != null && location.search != "") {
@@ -550,7 +550,7 @@
         ws.send(["refresh"].join(" "))
         updateExplosions();
       }
-      
+
       // Create explosion effect
       function createExplosion(x, y) {
         var explosion = document.createElement("div");
@@ -559,15 +559,15 @@
         explosion.style.left = (x - 30) + "px";
         explosion.style.top = (y - 30) + "px";
         explosion.style.zIndex = "1000";
-        
+
         document.body.appendChild(explosion);
-        
+
         // Store explosion data for cleanup
         explosions.push({
           element: explosion,
           startTime: Date.now()
         });
-        
+
         // Remove explosion after animation
         setTimeout(function() {
           if (explosion.parentNode) {
@@ -575,7 +575,7 @@
           }
         }, config.explosionDuration);
       }
-      
+
       // Update and cleanup explosions
       function updateExplosions() {
         var currentTime = Date.now();
@@ -589,48 +589,48 @@
           return true;
         });
       }
-      
+
       // Create Rockman-style death effect with blue particles (fireworks-like)
       function createDeathEffect(x, y, isLarge) {
         // Default to large effect if not specified
         if (isLarge === undefined) isLarge = true;
-        
+
         var particleCount = isLarge ? 20 : 15;
         var particleSpeed = isLarge ? 15 : 10;
         var particleSize = isLarge ? 30 : 24;
         var maxRadius = isLarge ? 400 : 250;
         var duration = isLarge ? 2500 : 2000;
-        
+
         for (var i = 0; i < particleCount; i++) {
           var particle = document.createElement("div");
           particle.className = "death-particle";
-          
+
           // Set particle size
           particle.style.width = particleSize + "px";
           particle.style.height = particleSize + "px";
-          
+
           // Calculate particle direction in a circular pattern with more randomness
           var angle = (i / particleCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
           var speed = particleSpeed + Math.random() * (particleSpeed * 0.8);
-          
+
           // Set initial position
           particle.style.left = (x - particleSize/2) + "px";
           particle.style.top = (y - particleSize/2) + "px";
-          
+
           // Calculate movement direction (fireworks-like explosion in all directions)
           var vx = Math.cos(angle) * speed;
           var vy = Math.sin(angle) * speed;
-          
+
           // Add some upward bias for more natural firework effect
           vy -= Math.random() * 1.5;
-          
+
           document.body.appendChild(particle);
-          
+
           // Animate particle movement
           animateParticle(particle, vx, vy, duration, maxRadius);
         }
       }
-      
+
       // Animate individual particle with physics
       function animateParticle(particle, vx, vy, duration, maxRadius) {
         var startTime = Date.now();
@@ -638,30 +638,30 @@
         var startY = parseFloat(particle.style.top);
         var centerX = startX;
         var centerY = startY;
-        
+
         function updateParticle() {
           var elapsed = Date.now() - startTime;
           var progress = elapsed / duration;
-          
+
           if (progress >= 1) {
             if (particle.parentNode) {
               particle.parentNode.removeChild(particle);
             }
             return;
           }
-          
+
           // Apply gravity effect (particles slow down upward movement and accelerate downward)
           vy += 0.15;
-          
+
           // Apply air resistance to slow down particles over time
           vx *= 0.99;
           vy *= 0.99;
-          
+
           // Update position with better physics
           var deltaTime = elapsed * 0.016; // Convert to frame-based movement
           var currentX = startX + vx * deltaTime;
           var currentY = startY + vy * deltaTime;
-          
+
           // Limit particle spread to maxRadius
           var distance = Math.sqrt(Math.pow(currentX - centerX, 2) + Math.pow(currentY - centerY, 2));
           if (distance > maxRadius) {
@@ -672,13 +672,13 @@
             vx *= 0.3;
             vy *= 0.3;
           }
-          
+
           particle.style.left = currentX + "px";
           particle.style.top = currentY + "px";
-          
+
           requestAnimationFrame(updateParticle);
         }
-        
+
         updateParticle();
       }
     </script>

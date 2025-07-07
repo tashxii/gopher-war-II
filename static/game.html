@@ -8,6 +8,10 @@
     overflow: hidden;
     background: url('/static/images/background.png') no-repeat;
     background-size: cover;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
   }
   .body-gameover {
     cursor: default;
@@ -20,12 +24,22 @@
     position: absolute;
     left: 0px;
     top: 0px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
   }
   .target-name {
     position: absolute;
     bottom: -20px;
     text-align: center;
     color: blueviolet;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
   }
   .bomb {
     background-image: url('/static/gopher/bomb.png');
@@ -35,6 +49,11 @@
     position: absolute;
     left: 0px;
     top: 0px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
   }
   .missile {
     background-image: url('/static/gopher/missile.png');
@@ -44,10 +63,20 @@
     position: absolute;
     left: 0px;
     top: 0px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
   }
   .msg {
     font-size: 20px;
     color: red;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
   }
   .explosion {
     width: 60px;
@@ -452,6 +481,12 @@
         }
         document.documentElement.style.setProperty('--gameover-bg', gameOverBg);
       }
+
+      // Disable right-click context menu
+      window.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        return false;
+      });
 
       //Initialize game from URL parameters
       window.addEventListener("load", function (e) {

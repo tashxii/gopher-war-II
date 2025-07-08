@@ -12,6 +12,7 @@
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    touch-action: none;
   }
   .body-gameover {
     cursor: default;
@@ -509,13 +510,13 @@
         // Auto-start the game without character selection
         setTimeout(init, 500);
       });
-      //move target event
-      window.addEventListener("mousemove", function (e) {
+      // Unified movement handler for both mouse and touch
+      function handleMove(x, y) {
         if (myid > -1 && mylife > 0) {
           // Don't show own player immediately - wait for server response
           if (prevX !== 0 || prevY !== 0) {
-            var dx = e.pageX - prevX;
-            var dy = e.pageY - prevY;
+            var dx = x - prevX;
+            var dy = y - prevY;
             if( dx != 0 || dy != 0 ){
               if (Math.abs(dx)>=Math.abs(dy)) {
                 bulletDirection = (dx>=0) ? 1 : 3;
@@ -524,30 +525,59 @@
               }
             }
           }
-          prevX = e.pageX;
-          prevY = e.pageY;
+          prevX = x;
+          prevY = y;
           if (initialized) {
-            ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+            ws.send(["show", x, y, mycharge].join(" "));
           }
         }
+      }
+
+      //move target event - mouse
+      window.addEventListener("mousemove", function (e) {
+        handleMove(e.pageX, e.pageY);
       });
-      //charge event
-      window.addEventListener("mousedown", function (e) {
+
+      //move target event - touch
+      window.addEventListener("touchmove", function (e) {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          var touch = e.touches[0];
+          handleMove(touch.pageX, touch.pageY);
+        }
+      });
+      // Unified charge handler for both mouse and touch
+      function handleChargeStart(x, y) {
         if (missileload === true) {
           if (mycharge === "none") {
             chargingTimerid = setTimeout(()=>{
               mycharge = "charging";
-              ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+              ws.send(["show", x, y, mycharge].join(" "));
               chargedTimerid = setTimeout(()=>{
                 mycharge = "charged"
-                ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+                ws.send(["show", x, y, mycharge].join(" "));
               }, config.missileCharged);
             }, config.missileCharging);
           }
         }
+      }
+
+      //charge event - mouse
+      window.addEventListener("mousedown", function (e) {
+        handleChargeStart(e.pageX, e.pageY);
       });
-      //fire bomb or missile event
-      window.addEventListener("mouseup", function(e) {
+
+      //charge event - touch
+      window.addEventListener("touchstart", function (e) {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+          var touch = e.touches[0];
+          handleMove(touch.pageX, touch.pageY);
+          handleChargeStart(touch.pageX, touch.pageY);
+        }
+      });
+      // Unified fire handler for both mouse and touch
+      function handleFireEnd(x, y) {
         if(chargingTimerid) {
           clearTimeout(chargingTimerid);
           chargingTimerid = undefined;
@@ -559,20 +589,34 @@
         if (myid > -1 && mylife > 0 && initialized) {
           if(mycharge === "charged") {
             mycharge = "none";
-            show(myid, e.pageX, e.pageY, mylife, myname, mycharge, mycharacter);
-            ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
+            show(myid, x, y, mylife, myname, mycharge, mycharacter);
+            ws.send(["show", x, y, mycharge].join(" "));
             if (missileload === true){
               missileload = false;
-              ws.send(["fire-missile", e.pageX, e.pageY, bulletDirection].join(" "));
+              ws.send(["fire-missile", x, y, bulletDirection].join(" "));
             }
           } else {
             mycharge = "none";
-            show(myid, e.pageX, e.pageY, mylife, myname, mycharge, mycharacter);
-            ws.send(["show", e.pageX, e.pageY, mycharge].join(" "));
-            ws.send(["fire-bomb", e.pageX, e.pageY, bulletDirection].join(" "));
+            show(myid, x, y, mylife, myname, mycharge, mycharacter);
+            ws.send(["show", x, y, mycharge].join(" "));
+            ws.send(["fire-bomb", x, y, bulletDirection].join(" "));
           }
         }
-      })
+      }
+
+      //fire bomb or missile event - mouse
+      window.addEventListener("mouseup", function(e) {
+        handleFireEnd(e.pageX, e.pageY);
+      });
+
+      //fire bomb or missile event - touch
+      window.addEventListener("touchend", function(e) {
+        e.preventDefault();
+        if (e.changedTouches.length === 1) {
+          var touch = e.changedTouches[0];
+          handleFireEnd(touch.pageX, touch.pageY);
+        }
+      });
       //gameover continue event
       window.addEventListener("keydown", function(e) {
         if (mylife <= 0) {

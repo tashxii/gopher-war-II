@@ -564,11 +564,24 @@
 
       //charge event - mouse
       window.addEventListener("mousedown", function (e) {
+        // Handle gameover continue first
+        if (mylife <= 0) {
+          handleGameoverContinue();
+          return;
+        }
+        
         handleChargeStart(e.pageX, e.pageY);
       });
 
       //charge event - touch
       window.addEventListener("touchstart", function (e) {
+        // Handle gameover continue first
+        if (mylife <= 0) {
+          e.preventDefault();
+          handleGameoverContinue();
+          return;
+        }
+        
         e.preventDefault();
         if (e.touches.length === 1) {
           var touch = e.touches[0];
@@ -617,14 +630,21 @@
           handleFireEnd(touch.pageX, touch.pageY);
         }
       });
-      //gameover continue event
-      window.addEventListener("keydown", function(e) {
+      // Unified gameover continue handler
+      function handleGameoverContinue() {
         if (mylife <= 0) {
           setTimeout(function(){
             location.replace("/?name=" + encodeURIComponent(myname) + "&character=" + mycharacter);
           },500);
         }
+      }
+
+      //gameover continue event - keyboard
+      window.addEventListener("keydown", function(e) {
+        handleGameoverContinue();
       });
+
+
       function refreshEvent() {
         ws.send(["refresh"].join(" "))
         updateExplosions();

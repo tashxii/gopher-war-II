@@ -176,18 +176,18 @@
       window.addEventListener("load", function() {
         if (location.search != null && location.search != "") {
           var params = new URLSearchParams(location.search);
-          
+
           // Set name if provided
           if (params.has('name')) {
             var nameInput = document.getElementById('nameInput');
             nameInput.value = decodeURIComponent(params.get('name'));
           }
-          
+
           // Set character if provided
           if (params.has('character')) {
             var character = params.get('character');
             selectedCharacter = character;
-            
+
             // Update UI to reflect selected character
             var options = document.querySelectorAll('.character-option');
             options.forEach(function(option) {
@@ -216,14 +216,14 @@
         if (playerName === "") {
           playerName = "guest";
         }
-        
+
         // Redirect to game.html with parameters
-        window.location.href = "/game?name=" + encodeURIComponent(playerName) + "&character=" + selectedCharacter;
+        window.location.href = "/main?name=" + encodeURIComponent(playerName) + "&character=" + selectedCharacter;
       }
 
       // Focus on name input
       document.getElementById('nameInput').focus();
-      
+
       // Add Enter key handler to start game
       document.getElementById('nameInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' || e.keyCode === 13) {

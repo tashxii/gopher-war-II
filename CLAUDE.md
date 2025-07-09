@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Development
 - After starting server, access character selection at `http://localhost:5000`
-- Game screen accessible at `/game?name={name}&character={character}`
+- Game screen accessible at `/main?name={name}&character={character}`
 - Server serves static files from `./static/` directory
 - WebSocket endpoint available at `/ws`
 - HTTPS environments automatically switch WebSocket to WSS (secure) connections
@@ -58,7 +58,7 @@ This is a multiplayer shooting game built with Go backend and vanilla JavaScript
 ### Key Files
 - `main.go` - Main server implementation
 - `static/index.html` - Character selection screen
-- `static/game.html` - Game execution screen
+- `static/main.html` - Game execution screen
 - `static/{character}/` - Character-specific sprite assets
 
 ### WebSocket Protocol
@@ -94,7 +94,7 @@ Each character has unique settings for game balance:
 
 ### Known Issues and Solutions
 - **Mixed Content Error**: HTTPS environments block `ws://` WebSocket connections
-  - Solution: `static/game.html` uses `window.location.protocol` to auto-detect HTTP/HTTPS and select appropriate WebSocket protocol (ws/wss)
+  - Solution: `static/main.html` uses `window.location.protocol` to auto-detect HTTP/HTTPS and select appropriate WebSocket protocol (ws/wss)
 - **Environment Variables**: PaaS environments like Railway automatically set `PORT`
 - **Static Files**: Gin static file serving configuration enables `/static/` path access
 
@@ -114,7 +114,7 @@ Each character has unique settings for game balance:
 
 ### 開発
 - サーバー起動後、`http://localhost:5000` でキャラクター選択画面にアクセス
-- ゲーム画面は `/game?name={name}&character={character}` でアクセス
+- ゲーム画面は `/main?name={name}&character={character}` でアクセス
 - サーバーは `./static/` ディレクトリから静的ファイルを提供
 - WebSocketエンドポイントは `/ws` で利用可能
 - HTTPS環境では自動的にWebSocketもWSS（セキュア）接続に切り替わる
@@ -160,7 +160,7 @@ Each character has unique settings for game balance:
 ### 主要ファイル
 - `main.go` - メインサーバー実装
 - `static/index.html` - キャラクター選択画面
-- `static/game.html` - ゲーム実行画面
+- `static/main.html` - ゲーム実行画面
 - `static/{character}/` - キャラクター固有のスプライトアセット
 
 ### WebSocketプロトコル
@@ -196,6 +196,6 @@ Each character has unique settings for game balance:
 
 ### 既知の問題と対処法
 - **Mixed Content Error**: HTTPS環境でWebSocket接続を `ws://` で行うとブロックされる
-  - 対処法: `static/game.html` で `window.location.protocol` を使用してHTTP/HTTPS環境を自動判定し、適切なWebSocketプロトコル（ws/wss）を選択
+  - 対処法: `static/main.html` で `window.location.protocol` を使用してHTTP/HTTPS環境を自動判定し、適切なWebSocketプロトコル（ws/wss）を選択
 - **環境変数**: Railway等のPaaS環境では `PORT` 環境変数が自動設定される
 - **静的ファイル**: Ginの静的ファイル配信設定により `/static/` パスでアクセス可能

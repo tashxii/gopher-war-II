@@ -62,7 +62,7 @@ type Config struct {
 func main() {
 	// Initialize random seed
 	rand.Seed(time.Now().UnixNano())
-	
+
 	router := gin.Default()
 	mrouter := melody.New()
 	targets := make(map[*melody.Session]*TargetInfo)
@@ -75,8 +75,8 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		http.ServeFile(c.Writer, c.Request, "static/index.html")
 	})
-	router.GET("/game", func(c *gin.Context) {
-		http.ServeFile(c.Writer, c.Request, "static/game.html")
+	router.GET("/main", func(c *gin.Context) {
+		http.ServeFile(c.Writer, c.Request, "static/main.html")
 	})
 	router.Static("/static", "./static")
 
@@ -224,13 +224,13 @@ func main() {
 	if ip == "" {
 		fmt.Println("Environment variable [IP] is not set, using default")
 	}
-	
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "5000"
 		fmt.Println("Environment variable [PORT] is not set, using default port 5000")
 	}
-	
+
 	router.Run(ip + ":" + port)
 }
 
@@ -239,7 +239,7 @@ func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *me
 	if target.Paralyzed > 0 {
 		target.Paralyzed--
 	}
-	
+
 	// If still paralyzed, don't allow movement but update charge
 	if target.Paralyzed > 0 {
 		target.CHARGE = params[3]

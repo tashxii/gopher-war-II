@@ -1,7 +1,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Gopher war</title>
+    <title>Gopher war II</title>
   <style>
   body {
     cursor: none;
@@ -117,6 +117,89 @@
       opacity: 0;
       transform: scale(0.3);
     }
+  }
+  .target-mark {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+    z-index: 3000;
+    --targetmark-distance: 55px;
+  }
+  .target-mark::before,
+  .target-mark::after {
+    content: '';
+    position: absolute;
+    background: rgba(242, 97, 97, 0.9);
+    border: 1px solid rgba(242, 97, 97, 0.9);
+  }
+  /* direction-0は下向きの時の表示（^マークを上に） */
+  .target-mark.direction-0::before {
+    width: 6px;
+    height: 2px;
+    top: 6px;
+    left: 4px;
+    transform: rotate(45deg);
+    transform-origin: right center;
+  }
+  .target-mark.direction-0::after {
+    width: 6px;
+    height: 2px;
+    top: 6px;
+    left: 10px;
+    transform: rotate(-45deg);
+    transform-origin: left center;
+  }
+  /* 右向き > のようなL字（45度回転） */
+  .target-mark.direction-1::before {
+    width: 6px;
+    height: 2px;
+    top: 4px;
+    left: 9px;
+    transform: rotate(45deg);
+    transform-origin: left center;
+  }
+  .target-mark.direction-1::after {
+    width: 6px;
+    height: 2px;
+    top: 14px;
+    left: 9px;
+    transform: rotate(-45deg);
+    transform-origin: left center;
+  }
+  /* direction-2は上向きの時の表示（vマークを下に） */
+  .target-mark.direction-2::before {
+    width: 6px;
+    height: 2px;
+    top: 12px;
+    left: 4px;
+    transform: rotate(-45deg);
+    transform-origin: right center;
+  }
+  .target-mark.direction-2::after {
+    width: 6px;
+    height: 2px;
+    top: 12px;
+    left: 10px;
+    transform: rotate(45deg);
+    transform-origin: left center;
+  }
+  /* 左向き < のようなL字（45度回転） */
+  .target-mark.direction-3::before {
+    width: 6px;
+    height: 2px;
+    top: 4px;
+    left: 9px;
+    transform: rotate(-45deg);
+    transform-origin: right center;
+  }
+  .target-mark.direction-3::after {
+    width: 6px;
+    height: 2px;
+    top: 14px;
+    left: 9px;
+    transform: rotate(45deg);
+    transform-origin: right center;
   }
   </style>
   </head>
@@ -255,6 +338,11 @@
         mysize = config.maxSize;
         mycharge = "none";
         missileload = true;
+        // Show targetmark when player appears
+        var targetmark = document.getElementById('targetmark');
+        if (targetmark) {
+          targetmark.style.display = 'block';
+        }
       }
       //"show %s %d %d %d %s %s %s %d", ID, X, Y, LIFE, NAME, CHARGE, CHARACTER, PARALYZED
       function show(id, x, y, life, name, charge, character, paralyzed) {
@@ -366,7 +454,7 @@
 
           // Apply paralyzed visual effects immediately when hit
           if (paralyzed && paralyzed > 0) {
-            node.style.border = "3px solid purple";
+            node.style.border = "2px dotted purple";
             node.style.filter = "grayscale(0.7) opacity(0.7)";
           } else {
             node.style.border = "none";
@@ -445,6 +533,11 @@
           mylife = 0;
           document.body.className = "body-gameover";
           document.body.style.animation = "background-animation 4s linear infinite alternate"
+          // Hide targetmark when player dies
+          var targetmark = document.getElementById('targetmark');
+          if (targetmark) {
+            targetmark.style.display = 'none';
+          }
           if (timerid) {
             console.log("Stop refresh event...")
             setTimeout(function() {clearInterval(timerid)}, 10000)
@@ -510,6 +603,48 @@
         // Auto-start the game without character selection
         setTimeout(init, 500);
       });
+      // Update targetmark position and direction
+      function updateTargetmark(x, y) {
+        var targetmark = document.getElementById('targetmark');
+        if (!targetmark) {
+          targetmark = document.createElement('div');
+          targetmark.id = 'targetmark';
+          targetmark.className = 'target-mark';
+          document.body.appendChild(targetmark);
+        }
+        
+        // Get targetmark distance from CSS variable, default to 30px
+        var style = getComputedStyle(targetmark);
+        var distance = parseInt(style.getPropertyValue('--targetmark-distance')) || 30;
+        
+        // Calculate targetmark position based on direction
+        var targetmarkX = x;
+        var targetmarkY = y;
+        
+        // Direction: 0=down, 1=right, 2=up, 3=left
+        switch(bulletDirection) {
+          case 0: // down - show mark below
+            targetmarkY += distance;
+            break;
+          case 1: // right
+            targetmarkX += distance;
+            break;
+          case 2: // up - show mark above
+            targetmarkY -= distance;
+            break;
+          case 3: // left
+            targetmarkX -= distance;
+            break;
+        }
+        
+        // Update targetmark position
+        targetmark.style.left = (targetmarkX - 10) + 'px';
+        targetmark.style.top = (targetmarkY - 10) + 'px';
+        
+        // Update targetmark direction class
+        targetmark.className = 'target-mark direction-' + bulletDirection;
+      }
+      
       // Unified movement handler for both mouse and touch
       function handleMove(x, y) {
         if (myid > -1 && mylife > 0) {
@@ -527,6 +662,7 @@
           }
           prevX = x;
           prevY = y;
+          updateTargetmark(x, y);
           if (initialized) {
             ws.send(["show", x, y, mycharge].join(" "));
           }

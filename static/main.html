@@ -369,10 +369,18 @@
             node.style.backgroundImage = `url('/static/${character}/target.png')`;
           }
         }
-        node.style.left = (parseInt(x) - newsize/2) + "px";
-        node.style.top = (parseInt(y) - newsize/2) + "px";
+        var playerX = parseInt(x);
+        var playerY = parseInt(y);
+        node.style.left = (playerX - newsize/2) + "px";
+        node.style.top = (playerY - newsize/2) + "px";
         node.style.width = newsize + "px";
         node.style.height = newsize + "px";
+        
+        // Update targetmark position for own player
+        if (id === myid) {
+          updateTargetmark(playerX, playerY);
+        }
+        
         // Apply paralyzed visual effects
         if (paralyzed && paralyzed > 0) {
           node.style.border = "3px solid purple";
@@ -605,6 +613,11 @@
       });
       // Update targetmark position and direction
       function updateTargetmark(x, y) {
+        // Validate coordinates
+        if (isNaN(x) || isNaN(y) || x < 0 || y < 0) {
+          return; // Don't update with invalid coordinates
+        }
+        
         var targetmark = document.getElementById('targetmark');
         if (!targetmark) {
           targetmark = document.createElement('div');
@@ -659,10 +672,15 @@
                 bulletDirection = (dy>=0) ? 0 : 2;
               }
             }
+          } else {
+            // Initialize prevX and prevY if they are 0 (first touch/move)
+            prevX = x;
+            prevY = y;
+            // Set default direction to avoid undefined bulletDirection
+            bulletDirection = 0;
           }
           prevX = x;
           prevY = y;
-          updateTargetmark(x, y);
           if (initialized) {
             ws.send(["show", x, y, mycharge].join(" "));
           }
@@ -671,7 +689,11 @@
 
       //move target event - mouse
       window.addEventListener("mousemove", function (e) {
-        handleMove(e.pageX, e.pageY);
+        var x = e.pageX || e.clientX || 0;
+        var y = e.pageY || e.clientY || 0;
+        if (x > 0 && y > 0) {
+          handleMove(x, y);
+        }
       });
 
       //move target event - touch
@@ -679,7 +701,12 @@
         e.preventDefault();
         if (e.touches.length === 1) {
           var touch = e.touches[0];
-          handleMove(touch.pageX, touch.pageY);
+          // for Android compatibility
+          var x = touch.pageX || e.pageX || touch.clientX || 0;
+          var y = touch.pageY || e.pageY || touch.clientY || 0;
+          if (x > 0 && y > 0) {
+            handleMove(x, y);
+          }
         }
       });
       // Unified charge handler for both mouse and touch
@@ -706,7 +733,11 @@
           return;
         }
         
-        handleChargeStart(e.pageX, e.pageY);
+        var x = e.pageX || e.clientX || 0;
+        var y = e.pageY || e.clientY || 0;
+        if (x > 0 && y > 0) {
+          handleChargeStart(x, y);
+        }
       });
 
       //charge event - touch
@@ -721,8 +752,13 @@
         e.preventDefault();
         if (e.touches.length === 1) {
           var touch = e.touches[0];
-          handleMove(touch.pageX, touch.pageY);
-          handleChargeStart(touch.pageX, touch.pageY);
+          // for Android compatibility
+          var x = touch.pageX || e.pageX || touch.clientX || 0;
+          var y = touch.pageY || e.pageY || touch.clientY || 0;
+          if (x > 0 && y > 0) {
+            handleMove(x, y);
+            handleChargeStart(x, y);
+          }
         }
       });
       // Unified fire handler for both mouse and touch
@@ -755,7 +791,11 @@
 
       //fire bomb or missile event - mouse
       window.addEventListener("mouseup", function(e) {
-        handleFireEnd(e.pageX, e.pageY);
+        var x = e.pageX || e.clientX || 0;
+        var y = e.pageY || e.clientY || 0;
+        if (x > 0 && y > 0) {
+          handleFireEnd(x, y);
+        }
       });
 
       //fire bomb or missile event - touch
@@ -763,7 +803,11 @@
         e.preventDefault();
         if (e.changedTouches.length === 1) {
           var touch = e.changedTouches[0];
-          handleFireEnd(touch.pageX, touch.pageY);
+          var x = touch.pageX || touch.clientX || 0;
+          var y = touch.pageY || touch.clientY || 0;
+          if (x > 0 && y > 0) {
+            handleFireEnd(x, y);
+          }
         }
       });
       // Unified gameover continue handler

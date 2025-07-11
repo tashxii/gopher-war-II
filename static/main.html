@@ -700,15 +700,25 @@
       window.addEventListener("touchmove", function (e) {
         e.preventDefault();
         if (e.touches.length >= 1 || e.changedTouches.length >= 1) {
-          var touch = e.touches[0] || e.changedTouches[0];
-          // for Android compatibility
-          var x = touch.pageX || touch.clientX || e.pageX || 0;
-          var y = touch.pageY || touch.clientY || e.pageY || 0;
-          if (x > 0 && y > 0) {
-            handleMove(x, y);
+          var pos = getTouchPosition(e);
+          if (pos.x > 0 && pos.y > 0) {
+            handleMove(pos.x, pos.y);
           }
         }
       });
+
+      // Get touch position for mobile compatibility of Android/iOS
+      function getTouchPosition(e) {
+        var touch = e.touches[0] || e.changedTouches[0];
+        // pageX/Yが使える場合はそれを優先
+        var pageX = (typeof touch.pageX === 'number' && touch.pageX !== 0)
+            ? touch.pageX
+            : touch.clientX + (window.scrollX || window.pageXOffset || document.documentElement.scrollLeft);
+        var pageY = (typeof touch.pageY === 'number' && touch.pageY !== 0)
+            ? touch.pageY
+            : touch.clientY + (window.scrollY || window.pageYOffset || document.documentElement.scrollTop);
+        return { x: pageX, y: pageY };
+      }
       // Unified charge handler for both mouse and touch
       function handleChargeStart(x, y) {
         if (missileload === true) {
@@ -751,13 +761,10 @@
 
         e.preventDefault();
         if (e.touches.length >= 1 || e.changedTouches.length >= 1) {
-          var touch = e.touches[0] || e.changedTouches[0];
-          // for Android compatibility
-          var x = touch.pageX || touch.clientX || e.pageX || 0;
-          var y = touch.pageY || touch.clientY || e.pageY || 0;
-          if (x > 0 && y > 0) {
-            handleMove(x, y);
-            handleChargeStart(x, y);
+          var pos = getTouchPosition(e);
+          if (pos.x > 0 && pos.y > 0) {
+            handleMove(pos.x, pos.y);
+            handleChargeStart(pos.x, pos.y);
           }
         }
       });
@@ -802,11 +809,9 @@
       window.addEventListener("touchend", function(e) {
         e.preventDefault();
         if (e.changedTouches.length >= 1) {
-          var touch = e.changedTouches[0];
-          var x = touch.pageX || touch.clientX || e.pageX || 0;
-          var y = touch.pageY || touch.clientY || e.pageY || 0;
-          if (x > 0 && y > 0) {
-            handleFireEnd(x, y);
+          var pos = getTouchPosition(e);
+          if (pos.x > 0 && pos.y > 0) {
+            handleFireEnd(pos.x, pos.y);
           }
         }
       });

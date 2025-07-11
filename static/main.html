@@ -375,12 +375,12 @@
         node.style.top = (playerY - newsize/2) + "px";
         node.style.width = newsize + "px";
         node.style.height = newsize + "px";
-        
+
         // Update targetmark position for own player
         if (id === myid) {
           updateTargetmark(playerX, playerY);
         }
-        
+
         // Apply paralyzed visual effects
         if (paralyzed && paralyzed > 0) {
           node.style.border = "3px solid purple";
@@ -617,7 +617,7 @@
         if (isNaN(x) || isNaN(y) || x < 0 || y < 0) {
           return; // Don't update with invalid coordinates
         }
-        
+
         var targetmark = document.getElementById('targetmark');
         if (!targetmark) {
           targetmark = document.createElement('div');
@@ -625,15 +625,15 @@
           targetmark.className = 'target-mark';
           document.body.appendChild(targetmark);
         }
-        
+
         // Get targetmark distance from CSS variable, default to 30px
         var style = getComputedStyle(targetmark);
         var distance = parseInt(style.getPropertyValue('--targetmark-distance')) || 30;
-        
+
         // Calculate targetmark position based on direction
         var targetmarkX = x;
         var targetmarkY = y;
-        
+
         // Direction: 0=down, 1=right, 2=up, 3=left
         switch(bulletDirection) {
           case 0: // down - show mark below
@@ -649,15 +649,15 @@
             targetmarkX -= distance;
             break;
         }
-        
+
         // Update targetmark position
         targetmark.style.left = (targetmarkX - 10) + 'px';
         targetmark.style.top = (targetmarkY - 10) + 'px';
-        
+
         // Update targetmark direction class
         targetmark.className = 'target-mark direction-' + bulletDirection;
       }
-      
+
       // Unified movement handler for both mouse and touch
       function handleMove(x, y) {
         if (myid > -1 && mylife > 0) {
@@ -699,11 +699,11 @@
       //move target event - touch
       window.addEventListener("touchmove", function (e) {
         e.preventDefault();
-        if (e.touches.length === 1) {
+        if (e.touches.length >= 1) {
           var touch = e.touches[0];
           // for Android compatibility
-          var x = touch.pageX || e.pageX || touch.clientX || 0;
-          var y = touch.pageY || e.pageY || touch.clientY || 0;
+          var x = touch.pageX || touch.clientX || e.pageX || 0;
+          var y = touch.pageY || touch.clientY || e.pageY || 0;
           if (x > 0 && y > 0) {
             handleMove(x, y);
           }
@@ -732,7 +732,7 @@
           handleGameoverContinue();
           return;
         }
-        
+
         var x = e.pageX || e.clientX || 0;
         var y = e.pageY || e.clientY || 0;
         if (x > 0 && y > 0) {
@@ -748,13 +748,13 @@
           handleGameoverContinue();
           return;
         }
-        
+
         e.preventDefault();
-        if (e.touches.length === 1) {
+        if (e.touches.length >= 1) {
           var touch = e.touches[0];
           // for Android compatibility
-          var x = touch.pageX || e.pageX || touch.clientX || 0;
-          var y = touch.pageY || e.pageY || touch.clientY || 0;
+          var x = touch.pageX || touch.clientX || e.pageX || 0;
+          var y = touch.pageY || touch.clientY || e.pageY || 0;
           if (x > 0 && y > 0) {
             handleMove(x, y);
             handleChargeStart(x, y);
@@ -801,10 +801,10 @@
       //fire bomb or missile event - touch
       window.addEventListener("touchend", function(e) {
         e.preventDefault();
-        if (e.changedTouches.length === 1) {
+        if (e.changedTouches.length >= 1) {
           var touch = e.changedTouches[0];
-          var x = touch.pageX || touch.clientX || 0;
-          var y = touch.pageY || touch.clientY || 0;
+          var x = touch.pageX || touch.clientX || e.pageX || 0;
+          var y = touch.pageY || touch.clientY || e.pageY || 0;
           if (x > 0 && y > 0) {
             handleFireEnd(x, y);
           }

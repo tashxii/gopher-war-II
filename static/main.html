@@ -699,8 +699,8 @@
       //move target event - touch
       window.addEventListener("touchmove", function (e) {
         e.preventDefault();
-        if (e.touches.length >= 1) {
-          var touch = e.touches[0];
+        if (e.touches.length >= 1 || e.changedTouches.length >= 1) {
+          var touch = e.touches[0] || e.changedTouches[0];
           // for Android compatibility
           var x = touch.pageX || touch.clientX || e.pageX || 0;
           var y = touch.pageY || touch.clientY || e.pageY || 0;
@@ -750,8 +750,8 @@
         }
 
         e.preventDefault();
-        if (e.touches.length >= 1) {
-          var touch = e.touches[0];
+        if (e.touches.length >= 1 || e.changedTouches.length >= 1) {
+          var touch = e.touches[0] || e.changedTouches[0];
           // for Android compatibility
           var x = touch.pageX || touch.clientX || e.pageX || 0;
           var y = touch.pageY || touch.clientY || e.pageY || 0;

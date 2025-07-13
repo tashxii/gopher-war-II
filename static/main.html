@@ -710,8 +710,15 @@
             var dy = pos.y - touchStartY;
             var distance = Math.sqrt(dx * dx + dy * dy);
             
-            if (distance >= minMoveDistance) {
-              handleMove(pos.x, pos.y);
+            if (distance >= minMoveDistance && prevX !== 0 && prevY !== 0) {
+              // Calculate relative movement from current player position
+              var newX = prevX + dx;
+              var newY = prevY + dy;
+              handleMove(newX, newY);
+              
+              // Update touch start position for continuous movement
+              touchStartX = pos.x;
+              touchStartY = pos.y;
             }
           }
         }

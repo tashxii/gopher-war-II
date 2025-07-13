@@ -220,8 +220,6 @@
       var timerid = undefined;
       var chargingTimerid = undefined;
       var chargedTimerid = undefined;
-      var touchStartX = 0;
-      var touchStartY = 0;
       var configMap = {
         "gopher": {
           maxLife: 15,
@@ -703,17 +701,8 @@
         e.preventDefault();
         if (e.touches.length >= 1 || e.changedTouches.length >= 1) {
           var pos = getTouchPosition(e);
-          if (pos.x > 0 && pos.y > 0 && prevX !== 0 && prevY !== 0) {
-            // Calculate relative movement from current player position
-            var dx = pos.x - touchStartX;
-            var dy = pos.y - touchStartY;
-            var newX = prevX + dx;
-            var newY = prevY + dy;
-            handleMove(newX, newY);
-            
-            // Update touch start position for continuous movement
-            touchStartX = pos.x;
-            touchStartY = pos.y;
+          if (pos.x > 0 && pos.y > 0) {
+            handleMove(pos.x, pos.y);
           }
         }
       });
@@ -793,9 +782,6 @@
         if (e.touches.length >= 1 || e.changedTouches.length >= 1) {
           var pos = getTouchPosition(e);
           if (pos.x > 0 && pos.y > 0) {
-            // Store touch start position
-            touchStartX = pos.x;
-            touchStartY = pos.y;
             // Only start charging, don't move on touchstart
             handleChargeStart(pos.x, pos.y);
           }

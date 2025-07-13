@@ -709,7 +709,7 @@
 
       // Get touch position for mobile compatibility of Android/iOS
       function getTouchPosition(e) {
-        var touch = e.touches[0] || e.changedTouches[0];
+        var touch = e.changedTouches[0] || e.touches[0];
         // pageX/Yが使える場合はそれを優先
         var pageX = (typeof touch.pageX === 'number' && touch.pageX !== 0)
             ? touch.pageX
@@ -752,18 +752,17 @@
 
       //charge event - touch
       window.addEventListener("touchstart", function (e) {
+        e.preventDefault();
         // Handle gameover continue first
         if (mylife <= 0) {
-          e.preventDefault();
           handleGameoverContinue();
           return;
         }
 
-        e.preventDefault();
         if (e.touches.length >= 1 || e.changedTouches.length >= 1) {
           var pos = getTouchPosition(e);
           if (pos.x > 0 && pos.y > 0) {
-            handleMove(pos.x, pos.y);
+            // Only start charging, don't move on touchstart
             handleChargeStart(pos.x, pos.y);
           }
         }

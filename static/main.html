@@ -820,7 +820,6 @@
         if (myid > -1 && mylife > 0 && initialized) {
           if(mycharge === "charged") {
             mycharge = "none";
-            show(myid, x, y, mylife, myname, mycharge, mycharacter);
             ws.send(["show", x, y, mycharge].join(" "));
             if (missileload === true){
               missileload = false;
@@ -828,7 +827,6 @@
             }
           } else {
             mycharge = "none";
-            show(myid, x, y, mylife, myname, mycharge, mycharacter);
             ws.send(["show", x, y, mycharge].join(" "));
             ws.send(["fire-bomb", x, y, bulletDirection].join(" "));
           }

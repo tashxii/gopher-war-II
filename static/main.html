@@ -725,10 +725,30 @@
           if (mycharge === "none") {
             chargingTimerid = setTimeout(()=>{
               mycharge = "charging";
-              ws.send(["show", x, y, mycharge].join(" "));
+              // Use current player position instead of touch coordinates
+              if (myid > -1 && initialized) {
+                var currentTarget = document.getElementById("target-" + myid);
+                if (currentTarget) {
+                  var currentX = parseInt(currentTarget.style.left) + parseInt(currentTarget.style.width) / 2;
+                  var currentY = parseInt(currentTarget.style.top) + parseInt(currentTarget.style.height) / 2;
+                  ws.send(["show", currentX, currentY, mycharge].join(" "));
+                } else {
+                  ws.send(["show", prevX, prevY, mycharge].join(" "));
+                }
+              }
               chargedTimerid = setTimeout(()=>{
                 mycharge = "charged"
-                ws.send(["show", x, y, mycharge].join(" "));
+                // Use current player position instead of touch coordinates
+                if (myid > -1 && initialized) {
+                  var currentTarget = document.getElementById("target-" + myid);
+                  if (currentTarget) {
+                    var currentX = parseInt(currentTarget.style.left) + parseInt(currentTarget.style.width) / 2;
+                    var currentY = parseInt(currentTarget.style.top) + parseInt(currentTarget.style.height) / 2;
+                    ws.send(["show", currentX, currentY, mycharge].join(" "));
+                  } else {
+                    ws.send(["show", prevX, prevY, mycharge].join(" "));
+                  }
+                }
               }, config.missileCharged);
             }, config.missileCharging);
           }

@@ -717,6 +717,13 @@
         var pageY = (typeof touch.pageY === 'number' && touch.pageY !== 0)
             ? touch.pageY
             : touch.clientY + (window.scrollY || window.pageYOffset || document.documentElement.scrollTop);
+        // console.log("Touch position: ", pageX, pageY);
+        var p = document.createElement("p")
+        p.style.position = "absolute";
+        p.style.left = "10px";
+        p.style.top = "10px";
+        p.textContent = "Touch position: " + pageX + ", " + pageY;
+        document.body.appendChild(p);
         return { x: pageX, y: pageY };
       }
       // Unified charge handler for both mouse and touch

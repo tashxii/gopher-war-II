@@ -718,7 +718,14 @@
             ? touch.pageY
             : touch.clientY + (window.scrollY || window.pageYOffset || document.documentElement.scrollTop);
         // console.log("Touch position: ", pageX, pageY);
+
+        var oldp = document.getElementById("touch-position");
+        if (oldp) {
+          document.body.removeChild(oldp);
+        }
+
         var p = document.createElement("p")
+        p.id = "touch-position";
         p.style.position = "absolute";
         p.style.left = "10px";
         p.style.top = "10px";

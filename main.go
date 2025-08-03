@@ -19,8 +19,9 @@ import (
 // TargetInfo model
 type TargetInfo struct {
 	ID, NAME, CHARGE, CHARACTER string
-	X, Y, LIFE, SIZE            int
-	PrevX, PrevY                int
+	X, Y                        float64
+	LIFE, SIZE                  int
+	PrevX, PrevY                float64
 	HasMoved                    bool
 	Paralyzed                   int // Frames remaining for paralysis
 }
@@ -28,7 +29,8 @@ type TargetInfo struct {
 // BulletInfo model
 type BulletInfo struct {
 	ID                             string
-	X, Y, LIFE, MAXLIFE, DIRECTION int
+	X, Y                           float64
+	LIFE, MAXLIFE, DIRECTION       int
 	DAMAGE, SPEED, FIRERANGE, SIZE int
 	FIRE, SPECIAL                  bool
 	ParalyzeAmount                 int // Amount of paralysis to apply when hitting
@@ -60,9 +62,6 @@ type Config struct {
 }
 
 func main() {
-	// Initialize random seed
-	rand.Seed(time.Now().UnixNano())
-
 	router := gin.Default()
 	mrouter := melody.New()
 	targets := make(map[*melody.Session]*TargetInfo)
@@ -87,13 +86,13 @@ func main() {
 	mrouter.HandleConnect(func(s *melody.Session) {
 		lock.Lock()
 		for _, target := range targets {
-			message := fmt.Sprintf("show %s %d %d %d %s %s %s %d", target.ID, target.X, target.Y, target.LIFE, target.NAME, target.CHARGE, target.CHARACTER, target.Paralyzed)
+			message := fmt.Sprintf("show %s %f %f %d %s %s %s %d", target.ID, target.X, target.Y, target.LIFE, target.NAME, target.CHARGE, target.CHARACTER, target.Paralyzed)
 			s.Write([]byte(message))
 		}
 		//appear(id)
 		// Generate random spawn position (avoid screen edges)
-		spawnX := rand.Intn(600) + 100 // Random X between 100-700
-		spawnY := rand.Intn(400) + 100 // Random Y between 100-500
+		spawnX := float64(rand.Intn(600) + 100) // Random X between 100-700
+		spawnY := float64(rand.Intn(400) + 100) // Random Y between 100-500
 		targets[s] = &TargetInfo{ID: strconv.Itoa(counter), NAME: "", CHARGE: "none", CHARACTER: "", X: spawnX, Y: spawnY, PrevX: spawnX, PrevY: spawnY, HasMoved: false, Paralyzed: 0}
 		bombs[s] = &BulletInfo{ID: targets[s].ID, SPECIAL: false}
 		missiles[s] = &BulletInfo{ID: targets[s].ID, SPECIAL: true}
@@ -243,7 +242,7 @@ func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *me
 	// If still paralyzed, don't allow movement but update charge
 	if target.Paralyzed > 0 {
 		target.CHARGE = params[3]
-		message := fmt.Sprintf("show %s %d %d %d %s %s %s %d",
+		message := fmt.Sprintf("show %s %f %f %f %s %s %s %d",
 			target.ID,
 			target.X,
 			target.Y,
@@ -256,8 +255,8 @@ func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *me
 		return
 	}
 
-	newX, _ := strconv.Atoi(params[1])
-	newY, _ := strconv.Atoi(params[2])
+	newX, _ := strconv.ParseFloat(params[1], 64)
+	newY, _ := strconv.ParseFloat(params[2], 64)
 
 	// Calculate movement distance
 	dx := float64(newX - target.PrevX)
@@ -271,8 +270,8 @@ func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *me
 		ratio := maxMoveDistance / distance
 		dx *= ratio
 		dy *= ratio
-		newX = target.PrevX + int(dx)
-		newY = target.PrevY + int(dy)
+		newX = target.PrevX + dx
+		newY = target.PrevY + dy
 	}
 
 	// Update position
@@ -287,7 +286,7 @@ func moveTarget(target *TargetInfo, params []string, config *Config, mrouter *me
 		target.HasMoved = true
 	}
 
-	message := fmt.Sprintf("show %s %d %d %d %s %s %s %d",
+	message := fmt.Sprintf("show %s %f %f %d %s %s %s %d",
 		target.ID,
 		target.X,
 		target.Y,
@@ -322,16 +321,16 @@ func moveBullet(bullet *BulletInfo, mrouter *melody.Melody, targets map[*melody.
 		mrouter.Broadcast([]byte(message))
 		return
 	}
-	var dx, dy int
+	var dx, dy float64
 	switch bullet.DIRECTION {
 	case 0:
-		dy = bullet.SPEED
+		dy = float64(bullet.SPEED)
 	case 1:
-		dx = bullet.SPEED
+		dx = float64(bullet.SPEED)
 	case 2:
-		dy = -bullet.SPEED
+		dy = -float64(bullet.SPEED)
 	case 3:
-		dx = -bullet.SPEED
+		dx = -float64(bullet.SPEED)
 	}
 	bullet.X += dx
 	bullet.Y += dy
@@ -343,7 +342,7 @@ func moveBullet(bullet *BulletInfo, mrouter *melody.Melody, targets map[*melody.
 			break
 		}
 	}
-	message := fmt.Sprintf("bullet %s %d %d %d %t %s", bullet.ID, bullet.X, bullet.Y, bullet.DIRECTION, bullet.SPECIAL, character)
+	message := fmt.Sprintf("bullet %s %f %f %d %t %s", bullet.ID, bullet.X, bullet.Y, bullet.DIRECTION, bullet.SPECIAL, character)
 	mrouter.Broadcast([]byte(message))
 }
 
